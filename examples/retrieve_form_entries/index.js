@@ -163,6 +163,7 @@ async function execute() {
   date30DaysAgo.setDate(today.getDate() - 60);
 
   // Retrieve the latest 30 days of messages
+  console.log(`========================== messages`)
   let messagesResponse = await axiosInstance
     .post(`/expression/execute?departmentId=${departmentId}`, {
       pipeline: [{
@@ -182,6 +183,7 @@ async function execute() {
 
   // Get the messages themselves
   let messages = messagesResponse.data ?? [];
+  console.log(messages.length)
 
   // Fetch the formVersions
   console.log(`========================== formVersions`)
