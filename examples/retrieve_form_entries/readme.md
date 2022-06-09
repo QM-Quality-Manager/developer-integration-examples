@@ -87,6 +87,104 @@ Below is an expression executing a `CUSTOM` preset query using a star and end da
 });
 ```
 
+A message result might look like the message below.
+
+```js
+{
+  "anonymous": false,
+  "caseHandlerDepartment": {
+    "departmentId": "7",
+    "departmentName": "Quality Manager"
+  },
+  "caseStatusGroup": "OPEN",
+  "caseStatusId": "d9c7f1b925424fefa639bc4fa9c25968",
+  "categories": [
+    {
+      "categoryGroupId": "741a2556a3804600b25bbd33854e49b5",
+      "categoryId": "63b2eb3828114ce4a40f60876558d6cf",
+      "categoryVersionId": "ebae3dfc705e427cace6d6b41d45c418",
+      "messageCategoryId": "80f2f34718894733804a41e94d682970",
+      "name": {
+        "en-GB": "Bug"
+      },
+      "value": 1
+    }
+  ],
+  "categoryGroupIds": [
+    "741a2556a3804600b25bbd33854e49b5"
+  ],
+  "categoryIds": [
+    "63b2eb3828114ce4a40f60876558d6cf"
+  ],
+  "cost": 0,
+  "createdBy": "7",
+  "createdOn": 1654589251731,
+  "departmentIds": [
+    "7"
+  ],
+  "fields": [
+    {
+      "formTextId": "1",
+      "messageTextId": "e770019b546045f8a771d3b965d98030",
+      "value": "7"
+    }
+  ],
+  "formVersion": {
+    "formId": "343ea0b84d3a49d2a82c64610d75553c",
+    "formTypeId": "2c9c4e7fdd8a4657bd7fe1c308248424",
+    "formVersionId": "8d6ed8ecfe8e4a4fbe56147656c605a7",
+    "name": {
+      "en-GB": "Story"
+    }
+  },
+  "id": "7744731720414b29ab4da08fdfe4aa9e",
+  "incidentOn": 1654589116146,
+  "priorityId": "3",
+  "registerBy": {
+    "email": "tn@qmplus.com",
+    "firstName": "Thomas",
+    "lastName": "Nordbrekken",
+    "middleName": "",
+    "userId": "7"
+  },
+  "registeredOn": 1654589251709,
+  "registeredOnBehalfOf": {
+    "email": "tn@qmplus.com",
+    "firstName": "Thomas",
+    "lastName": "Nordbrekken",
+    "middleName": "",
+    "userId": "7"
+  },
+  "registeredOnDepartment": {
+    "departmentId": "7",
+    "departmentName": "Quality Manager"
+  },
+  "registeredUserIds": [
+    "7"
+  ],
+  "riskModelValues": [],
+  "title": "Kvinesdaltest\nSkjemaet: HMS-melding / uønsket hendelse\nFår ikke endret farge på infofelt og obligatoriske felt. Er bare lysegrått.",
+  "updatedBy": "7",
+  "updatedOn": 1654589251731,
+  "workflowId": "7d8b3307f0604d8291345483c9f8c375",
+  "pendingUserIdsByParticipantType": {}
+}
+```
+
+> The most efficent way to retrive the data is.
+>
+> 1. Query the messages
+> 2. Build the list of category group ids, category version ids, form type ids,
+     form version ids, priority ids, risk version ids, department ids and workflow ids
+> 3. Query the endpoint to retrive the needed groups
+> 4. Merge the results
+
+The alternative is to query the different groups based on the last time you updated your data storage.
+
+To do this you can query using the update field and a date expression.
+
+
+
 ## Required Entities
 To resolve all the fields in a form entry we need to extract the following entities.
 
@@ -95,7 +193,7 @@ To resolve all the fields in a form entry we need to extract the following entit
 - Form Types
 - Form Versions
 - Priorities
-- Risk Models
+- Risk Version Models
 - Departments
 - Workflows
 
@@ -111,4 +209,41 @@ To fetch category groups we use the following REST API endpoints.
 ### Category Versions
 To fetch the category versions we use the following REST API endpoints.
 
-> `https://qmplus.app/api/categoryversions/ids`
+> `https://qmplus.app/api/categoryversions/ids?ids=1&ids=2`
+> [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/categories/getCategoryVersionsByIds)
+
+### Form Types
+To fetch the form tyoes, we use the following REST API endpoints.
+
+> `https://qmplus.app/api/formtype?ids=1&ids=2`
+> [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/formtypes/listFormTypes)
+
+### Form Versions
+To fetch the form versions, we use the following REST API endpoints.
+
+> `https://qmplus.app/api/form/versions?ids=1&ids=2`
+> [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/forms/getFormVersions)
+
+### Priorities
+To fetch the priorities, we use the following REST API endpoints.
+
+> `https://qmplus.app/api/priority?ids=1&ids=2`
+> [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/priorities/listPriorities)
+
+### Risk Version Models
+To fetch the risk model versions, we use the following REST API endpoints.
+
+> `https://qmplus.app/api/riskmodel/version/ids?ids=1&ids=2`
+> [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/riskmodels/getVersionsByIds)
+
+### Department
+To fetch the departments, we use the following REST API endpoints.
+
+> `https://qmplus.app/api/department/ids?ids=1&ids=2`
+> [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/departments/getDepartmentsByIds)
+
+### Workflows
+To fetch the departments, we use the following REST API endpoints.
+
+> `https://qmplus.app/api/workflow/ids?ids=1&ids=2`
+> [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/workflows/getWorkflowByIds)
