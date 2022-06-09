@@ -27,131 +27,15 @@ async function execute() {
   const departmentId = "1";
   const visibility = "DEPARTMENT_AND_CHILDREN";
 
-  // // Build an axios instance
-  // const axiosInstance = axios.create({
-  //   baseURL: "https://qmplus.app/api/",
-  //   timeout: 10000,
-  //   headers: {
-  //     'auth-token': token,
-  //     'auth-tenant-id': tenantId
-  //   }
-  // });
-
   // Build an axios instance
   const axiosInstance = axios.create({
-    baseURL: "http://localhost:8080/api/",
-    timeout: 60000,
+    baseURL: "https://qmplus.app/api/",
+    timeout: 10000,
     headers: {
       'auth-token': token,
       'auth-tenant-id': tenantId
     }
   });
-
-  // /** ***********************************************************************************
-  //  * Fetch departments
-  //  * ***********************************************************************************/
-  // console.log(`= Fetch departments`);
-
-  // // Retrieve the departments
-  // let departmentsResponse = await axiosInstance
-  //   .get(`/department?departmentId=${departmentId}&visibility=${visibility}&active=true&includeFields=id&includeFields=name`)
-  // let departments = departmentsResponse.data.entries ?? [];
-  // let departmentById = {};
-  // departments.forEach(department => departmentById[department.id] = department);
-  // console.log(departments)
-
-  // /** ***********************************************************************************
-  //  * Fetch category groups
-  //  * ***********************************************************************************/
-  // console.log(`= Fetch category groups`);
-
-  // // Retrieve the category groups
-  // let categoryGroupsResponse = await axiosInstance
-  //   .get(`/categoryversions`)
-  // // let categoryGroups = categoryGroupsResponse.data.entries ?? [];
-  // let categoryGroups = categoryGroupsResponse.data.entries ?? [];
-
-  // // Build map of categoryGroups by id
-  // let categoryGroupsById = {};
-  // categoryGroups.forEach(categoryGroup => categoryGroupsById[categoryGroup.id] = categoryGroup);
-
-  // /** ***********************************************************************************
-  //  * Fetch category versions
-  //  * ***********************************************************************************/
-  // console.log(`= Fetch category versions`);
-
-  // // Skip entries
-  // let skip = 0;
-  // let limit = 100;
-  // let categoryVersions = [];
-
-  // // Retrieve the category groups
-  // // Iterate until we have no more results
-  // while (true) {
-  //   console.log(`    = fetch category versions [${skip}, ${skip + limit}]`);
-
-  //   let categoryVersionsResponse = await axiosInstance
-  //     .get(`/categoryversions?skip=${skip}&limit=${limit}`);
-  //   let entries = categoryVersionsResponse.data.entries ?? []
-  //   if (entries.length == 0) break;
-  //   categoryVersions = categoryVersions.concat(entries);
-  //   skip = skip + entries.length;
-  // }
-
-  // /** ***********************************************************************************
-  //  * Fetch form types
-  //  * ***********************************************************************************/
-  // console.log(`= Fetch form types`);
-
-  //  // Retrieve the form types
-  //  let formTypesResponse = await axiosInstance
-  //    .get(`/formtype?active=true&includeFields=id&includeFields=name`)
-  //  let formTypes = formTypesResponse.data.entries ?? [];
-  //  let formTypesById = {};
-  //  formTypes.forEach(formType => formTypesById[formType.id] = formType);
-  //  console.log(formTypes)
-
-  // /** ***********************************************************************************
-  //  * Fetch forms
-  //  * ***********************************************************************************/
-  // console.log(`= Fetch forms`);
-
-  // // Fetch all the form versions (we need to use these to map form entries to forms)
-  // let formsResponse = await axiosInstance
-  //   .get(`/form?departmentId=${departmentId}&visibility=${visibility}`);
-  // let forms = formsResponse.data.entries ?? [];
-
-  // /** ***********************************************************************************
-  //  * Fetch the form versions
-  //  * ***********************************************************************************/
-  // console.log(`= Fetch form versions`);
-
-  // // Get the formVersions by formId
-  // let formVersionsByForm = {};
-
-  // // For each form fetch the form versions
-  // for (let form of forms) {
-  //   console.log(`  = fetch form ${form.id}`);
-  //   // Skip entries
-  //   let skip = 0;
-  //   let limit = 100;
-  //   let results = [];
-
-  //   // Iterate until we have no more results
-  //   while (true) {
-  //     console.log(`    = fetch form ${form.id} [${skip}, ${skip + limit}]`);
-
-  //     let formVersionsResult = await axiosInstance
-  //       .get(`/form/${form.id}/versions?skip=${skip}&limit=${limit}`);
-  //     let formVersions = formVersionsResult.data.entries ?? []
-  //     if (formVersions.length == 0) break;
-  //     results = results.concat(formVersions);
-  //     skip = skip + formVersions.length;
-  //   }
-
-  //   // Entries
-  //   formVersionsByForm[form.id] = results ?? [];
-  // }
 
   /** ***********************************************************************************
    * Latest month of messages
@@ -160,7 +44,7 @@ async function execute() {
   // Get date 30 days ago
   const today = new Date();
   const date30DaysAgo = new Date();
-  date30DaysAgo.setDate(today.getDate() - 60);
+  date30DaysAgo.setDate(today.getDate() - 30);
 
   // Retrieve the latest 30 days of messages
   console.log(`========================== messages`)
@@ -171,7 +55,6 @@ async function execute() {
           caseTypeId: { $eq: "1" },
           visibility: visibility,
           registeredOnDate: {
-            // preset: "LAST_3_MONTHS"
             preset: "CUSTOM",
             start: {
               $gte: date30DaysAgo.toISOString()
