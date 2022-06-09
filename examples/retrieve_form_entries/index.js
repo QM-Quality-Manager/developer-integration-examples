@@ -257,7 +257,7 @@ async function execute() {
   const ids = unique(messages.map(message => message.riskVersionModelIds).flat());
   // Retrieve the latest 30 days of messages
   let entries = await instance
-    .get(`/riskmodel/version/ids?${ids.map(id => `ids=${id}`).join('&')}`);
+    .get(`/riskmodel/version?${ids.map(id => `ids=${id}`).join('&')}`);
   return entries.data.entries ?? [];
 }
 
@@ -272,7 +272,7 @@ async function execute() {
   const ids = unique(messages.map(message => message.departmentIds).flat());
   // Retrieve the latest 30 days of messages
   let entries = await instance
-    .get(`/department/ids?${ids.map(id => `ids=${id}`).join('&')}`);
+    .get(`/department?${ids.map(id => `ids=${id}`).join('&')}`);
   return entries.data.entries ?? [];
 }
 
@@ -287,7 +287,7 @@ async function execute() {
   const ids = unique(messages.map(message => message.workflowId));
   // Retrieve the latest 30 days of messages
   let entries = await instance
-    .get(`/workflow/ids?${ids.map(id => `ids=${id}`).join('&')}`);
+    .get(`/workflow?${ids.map(id => `ids=${id}`).join('&')}`);
   return entries.data.entries ?? [];
 }
 
@@ -317,7 +317,7 @@ async function execute() {
   const ids = unique(messages.map(message => message.categories.map(cat => cat.categoryGroupId)).flat());
   // Retrieve the latest 30 days of messages
   let entries = await instance
-    .get(`/categorygroups/ids?${ids.map(id => `ids=${id}`).join('&')}`);
+    .get(`/categorygroups?${ids.map(id => `ids=${id}`).join('&')}`);
   return entries.data.entries ?? [];
 }
 
@@ -332,7 +332,7 @@ async function execute() {
   const ids = unique(messages.map(message => message.categories.map(cat => cat.categoryVersionId)).flat());
   // Retrieve the latest 30 days of messages
   let entries = await instance
-    .get(`/categoryversions/ids?${ids.map(id => `ids=${id}`).join('&')}`);
+    .get(`/categoryversions?${ids.map(id => `ids=${id}`).join('&')}`);
   return entries.data.entries ?? [];
 }
 
