@@ -187,11 +187,10 @@ async function setupOrganization() {
   ];
 
   // Add all departments
-  await fetch(`${baseUrl}/provisioning/iam/department`, {
+  await fetch(`${baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders,
-    body: JSON.stringify(departments),
-    search: new URLSearchParams({ transactionId })
+    body: JSON.stringify(departments)
   });
 
   // Commit the structure
@@ -295,11 +294,10 @@ async function reorganizeDepartments() {
     }
   ];
 
-  await fetch(`${baseUrl}/provisioning/iam/department`, {
+  await fetch(`${baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders,
-    body: JSON.stringify(changes),
-    search: new URLSearchParams({ transactionId })
+    body: JSON.stringify(changes)
   });
 
   const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
@@ -330,11 +328,10 @@ async function emergencyDeactivation(departmentExternalId) {
     cascadeToChildren: true
   };
 
-  await fetch(`${baseUrl}/provisioning/iam/department`, {
+  await fetch(`${baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders,
-    body: JSON.stringify([deactivation]),
-    search: new URLSearchParams({ transactionId })
+    body: JSON.stringify([deactivation])
   });
 
   const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
@@ -398,11 +395,10 @@ class DirectorySync {
     for (let i = 0; i < sortedDepts.length; i += batchSize) {
       const batch = sortedDepts.slice(i, i + batchSize);
       
-      await fetch(`${this.baseUrl}/provisioning/iam/department`, {
+      await fetch(`${this.baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
         method: 'POST',
         headers: this.headers,
-        body: JSON.stringify(batch),
-        search: new URLSearchParams({ transactionId })
+        body: JSON.stringify(batch)
       });
       
       console.log(`Department batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(sortedDepts.length/batchSize)} queued`);
