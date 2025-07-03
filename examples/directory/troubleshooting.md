@@ -26,13 +26,13 @@ This guide helps you diagnose and resolve common issues with the QMPlus Director
 1. **Missing or incorrect headers**
    ```bash
    # ❌ Wrong: Missing headers
-   curl https://api.qmplus.com/provisioning/directory/checkpoint
+   curl https://api.qmplus.com/provisioning/iam/checkpoint
    
    # ✅ Correct: Include auth headers
    curl -H "auth-tenant-id: your-tenant-id" \
         -H "auth-token: your-api-token" \
         -H "Content-Type: application/json" \
-        https://api.qmplus.com/provisioning/directory/checkpoint
+        https://api.qmplus.com/provisioning/iam/checkpoint
    ```
 
 2. **Expired or invalid API token**
@@ -324,7 +324,7 @@ if (result.failedOperations > 0) {
 4. **Test from command line**
    ```bash
    # Simple connectivity test
-   curl -v https://your-instance.qmplus.com/api/provisioning/directory/transactions \
+   curl -v https://your-instance.qmplus.com/api/provisioning/iam/transactions \
      -H "auth-tenant-id: your-tenant" \
      -H "auth-token: your-token"
    ```

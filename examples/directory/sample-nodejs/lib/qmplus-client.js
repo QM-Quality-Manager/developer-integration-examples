@@ -46,7 +46,7 @@ class QMPlusClient {
   async createCheckpoint() {
     this.logger.info('Creating new checkpoint');
     
-    const response = await this.http.post('/provisioning/directory/checkpoint');
+    const response = await this.http.post('/provisioning/iam/checkpoint');
     const data = response.data;
     
     this.logger.info(`Checkpoint created: ${data.transactionId}`);
@@ -61,7 +61,7 @@ class QMPlusClient {
   async commitTransaction(transactionId) {
     this.logger.info(`Committing transaction: ${transactionId}`);
     
-    const response = await this.http.post(`/provisioning/directory/commit`, null, {
+    const response = await this.http.post(`/provisioning/iam/commit`, null, {
       params: { transactionId }
     });
     
@@ -89,7 +89,7 @@ class QMPlusClient {
    * @returns {Promise<Object>} Transaction status information
    */
   async getTransactionStatus(transactionId) {
-    const response = await this.http.get(`/provisioning/directory/transaction/${transactionId}/status`);
+    const response = await this.http.get(`/provisioning/iam/transaction/${transactionId}/status`);
     return response.data;
   }
 
@@ -115,7 +115,7 @@ class QMPlusClient {
     if (filters.createdAfter) params.createdAfter = filters.createdAfter;
     if (filters.createdBefore) params.createdBefore = filters.createdBefore;
     
-    const response = await this.http.get('/provisioning/directory/transactions', { params });
+    const response = await this.http.get('/provisioning/iam/transactions', { params });
     return response.data;
   }
 
@@ -137,7 +137,7 @@ class QMPlusClient {
 
     if (transactionId) {
       // Transaction mode - queue operations
-      const response = await this.http.post('/provisioning/directory/department', departments, {
+      const response = await this.http.post('/provisioning/iam/department', departments, {
         params: { transactionId }
       });
       
@@ -149,7 +149,7 @@ class QMPlusClient {
       return response.data;
     } else {
       // Direct mode - execute immediately
-      const response = await this.http.post('/provisioning/directory/department', departments);
+      const response = await this.http.post('/provisioning/iam/department', departments);
       
       this.logger.info(`Processed ${response.data.processed} departments directly`, {
         processed: response.data.processed,
@@ -170,7 +170,7 @@ class QMPlusClient {
     const params = {};
     if (filters.active !== undefined) params.active = filters.active;
     
-    const response = await this.http.get('/provisioning/directory/department', { params });
+    const response = await this.http.get('/provisioning/iam/department', { params });
     return response.data;
   }
 
@@ -192,7 +192,7 @@ class QMPlusClient {
 
     if (transactionId) {
       // Transaction mode - queue operations
-      const response = await this.http.post(`/provisioning/directory/${transactionId}/user`, users);
+      const response = await this.http.post(`/provisioning/iam/${transactionId}/user`, users);
       
       this.logger.info(`Queued ${users.length} user operations`, {
         transactionId,
@@ -203,7 +203,7 @@ class QMPlusClient {
     } else {
       // Direct mode - create transaction automatically
       const checkpoint = await this.createCheckpoint();
-      await this.http.post(`/provisioning/directory/${checkpoint.transactionId}/user`, users);
+      await this.http.post(`/provisioning/iam/${checkpoint.transactionId}/user`, users);
       const result = await this.commitTransaction(checkpoint.transactionId);
       
       this.logger.info(`Processed ${users.length} users with auto-transaction`, {
@@ -226,7 +226,7 @@ class QMPlusClient {
     const params = {};
     if (filters.active !== undefined) params.active = filters.active;
     
-    const response = await this.http.get('/provisioning/directory/user', { params });
+    const response = await this.http.get('/provisioning/iam/user', { params });
     return response.data;
   }
 

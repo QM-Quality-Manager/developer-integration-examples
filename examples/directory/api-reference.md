@@ -27,7 +27,7 @@ Content-Type: application/json
 Creates a new transaction for queueing operations.
 
 ```http
-POST /provisioning/directory/checkpoint
+POST /provisioning/iam/checkpoint
 ```
 
 **Response:**
@@ -43,7 +43,7 @@ POST /provisioning/directory/checkpoint
 Executes all queued operations atomically.
 
 ```http
-POST /provisioning/directory/commit?transactionId={transactionId}
+POST /provisioning/iam/commit?transactionId={transactionId}
 ```
 
 **Response:**
@@ -74,7 +74,7 @@ POST /provisioning/directory/commit?transactionId={transactionId}
 Retrieves current status of a transaction.
 
 ```http
-GET /provisioning/directory/transaction/{transactionId}/status
+GET /provisioning/iam/transaction/{transactionId}/status
 ```
 
 **Response:**
@@ -96,7 +96,7 @@ GET /provisioning/directory/transaction/{transactionId}/status
 Retrieves transaction history with filtering and pagination.
 
 ```http
-GET /provisioning/directory/transactions
+GET /provisioning/iam/transactions
 ```
 
 **Query Parameters:**
@@ -109,7 +109,7 @@ GET /provisioning/directory/transactions
 
 **Example:**
 ```http
-GET /provisioning/directory/transactions?status=COMPLETED&page=0&pageSize=20
+GET /provisioning/iam/transactions?status=COMPLETED&page=0&pageSize=20
 ```
 
 **Response:**
@@ -146,7 +146,7 @@ GET /provisioning/directory/transactions?status=COMPLETED&page=0&pageSize=20
 Queues department operations within a transaction.
 
 ```http
-POST /provisioning/directory/department?transactionId={transactionId}
+POST /provisioning/iam/department?transactionId={transactionId}
 ```
 
 **Request Body:**
@@ -203,7 +203,7 @@ POST /provisioning/directory/department?transactionId={transactionId}
 Synchronizes departments immediately without transaction.
 
 ```http
-POST /provisioning/directory/department
+POST /provisioning/iam/department
 ```
 
 **Request Body:** Same as transaction mode
@@ -235,7 +235,7 @@ POST /provisioning/directory/department
 Retrieves all departments with optional filtering.
 
 ```http
-GET /provisioning/directory/department?active=true
+GET /provisioning/iam/department?active=true
 ```
 
 **Query Parameters:**
@@ -264,7 +264,7 @@ GET /provisioning/directory/department?active=true
 Queues user operations within a transaction.
 
 ```http
-POST /provisioning/directory/{transactionId}/user
+POST /provisioning/iam/{transactionId}/user
 ```
 
 **Request Body:**
@@ -323,7 +323,7 @@ POST /provisioning/directory/{transactionId}/user
 Retrieves all users with optional filtering.
 
 ```http
-GET /provisioning/directory/user?active=true
+GET /provisioning/iam/user?active=true
 ```
 
 **Query Parameters:**

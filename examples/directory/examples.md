@@ -20,14 +20,14 @@ Create a single user with department assignment:
 ```javascript
 async function createUser() {
   // 1. Create checkpoint
-  const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+  const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
     method: 'POST',
     headers: defaultHeaders
   });
   const { transactionId } = await checkpoint.json();
 
   // 2. Add user
-  await fetch(`${baseUrl}/provisioning/directory/${transactionId}/user`, {
+  await fetch(`${baseUrl}/provisioning/iam/${transactionId}/user`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify([{
@@ -45,7 +45,7 @@ async function createUser() {
   });
 
   // 3. Commit transaction
-  const result = await fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -59,7 +59,7 @@ Import multiple users efficiently:
 
 ```javascript
 async function bulkUserImport(users) {
-  const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+  const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
     method: 'POST', 
     headers: defaultHeaders
   });
@@ -70,7 +70,7 @@ async function bulkUserImport(users) {
   for (let i = 0; i < users.length; i += batchSize) {
     const batch = users.slice(i, i + batchSize);
     
-    await fetch(`${baseUrl}/provisioning/directory/${transactionId}/user`, {
+    await fetch(`${baseUrl}/provisioning/iam/${transactionId}/user`, {
       method: 'POST',
       headers: defaultHeaders,
       body: JSON.stringify(batch)
@@ -80,7 +80,7 @@ async function bulkUserImport(users) {
   }
 
   // Commit all operations
-  const result = await fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -115,7 +115,7 @@ Build a complete department hierarchy:
 
 ```javascript
 async function setupOrganization() {
-  const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+  const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -187,7 +187,7 @@ async function setupOrganization() {
   ];
 
   // Add all departments
-  await fetch(`${baseUrl}/provisioning/directory/department`, {
+  await fetch(`${baseUrl}/provisioning/iam/department`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify(departments),
@@ -195,7 +195,7 @@ async function setupOrganization() {
   });
 
   // Commit the structure
-  const result = await fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -209,7 +209,7 @@ Assign user to multiple departments with different roles:
 
 ```javascript
 async function assignUserMultipleDepartments() {
-  const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+  const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -237,13 +237,13 @@ async function assignUserMultipleDepartments() {
     ]
   };
 
-  await fetch(`${baseUrl}/provisioning/directory/${transactionId}/user`, {
+  await fetch(`${baseUrl}/provisioning/iam/${transactionId}/user`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify([user])
   });
 
-  const result = await fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
     method: 'POST', 
     headers: defaultHeaders
   });
@@ -261,7 +261,7 @@ Reorganize departments with cascade activation:
 
 ```javascript
 async function reorganizeDepartments() {
-  const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+  const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -295,14 +295,14 @@ async function reorganizeDepartments() {
     }
   ];
 
-  await fetch(`${baseUrl}/provisioning/directory/department`, {
+  await fetch(`${baseUrl}/provisioning/iam/department`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify(changes),
     search: new URLSearchParams({ transactionId })
   });
 
-  const result = await fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -316,7 +316,7 @@ Quickly deactivate an entire department branch:
 
 ```javascript
 async function emergencyDeactivation(departmentExternalId) {
-  const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+  const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -330,14 +330,14 @@ async function emergencyDeactivation(departmentExternalId) {
     cascadeToChildren: true
   };
 
-  await fetch(`${baseUrl}/provisioning/directory/department`, {
+  await fetch(`${baseUrl}/provisioning/iam/department`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify([deactivation]),
     search: new URLSearchParams({ transactionId })
   });
 
-  const result = await fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -398,7 +398,7 @@ class DirectorySync {
     for (let i = 0; i < sortedDepts.length; i += batchSize) {
       const batch = sortedDepts.slice(i, i + batchSize);
       
-      await fetch(`${this.baseUrl}/provisioning/directory/department`, {
+      await fetch(`${this.baseUrl}/provisioning/iam/department`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify(batch),
@@ -416,7 +416,7 @@ class DirectorySync {
     for (let i = 0; i < users.length; i += batchSize) {
       const batch = users.slice(i, i + batchSize);
       
-      await fetch(`${this.baseUrl}/provisioning/directory/${transactionId}/user`, {
+      await fetch(`${this.baseUrl}/provisioning/iam/${transactionId}/user`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify(batch)
@@ -460,7 +460,7 @@ class DirectorySync {
   }
 
   async createCheckpoint() {
-    const response = await fetch(`${this.baseUrl}/provisioning/directory/checkpoint`, {
+    const response = await fetch(`${this.baseUrl}/provisioning/iam/checkpoint`, {
       method: 'POST',
       headers: this.headers
     });
@@ -468,7 +468,7 @@ class DirectorySync {
   }
 
   async commitTransaction(transactionId) {
-    const response = await fetch(`${this.baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+    const response = await fetch(`${this.baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
       method: 'POST',
       headers: this.headers
     });
@@ -499,7 +499,7 @@ async function robustSync(data) {
   
   try {
     // Create checkpoint
-    const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+    const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
       method: 'POST',
       headers: defaultHeaders
     });
@@ -545,7 +545,7 @@ async function robustSync(data) {
 async function commitWithRetry(transactionId, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+      const response = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
         method: 'POST',
         headers: defaultHeaders
       });
@@ -577,7 +577,7 @@ async function commitWithRetry(transactionId, maxRetries = 3) {
 }
 
 async function getTransactionStatus(transactionId) {
-  const response = await fetch(`${baseUrl}/provisioning/directory/transaction/${transactionId}/status`, {
+  const response = await fetch(`${baseUrl}/provisioning/iam/transaction/${transactionId}/status`, {
     headers: defaultHeaders
   });
   return await response.json();
@@ -685,7 +685,7 @@ async function monitorTransaction(transactionId) {
 
 // Usage with async commit monitoring
 async function syncWithMonitoring(data) {
-  const checkpoint = await fetch(`${baseUrl}/provisioning/directory/checkpoint`, {
+  const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -695,7 +695,7 @@ async function syncWithMonitoring(data) {
   await queueOperations(transactionId, data);
   
   // Start commit (don't await immediately)
-  const commitPromise = fetch(`${baseUrl}/provisioning/directory/commit?transactionId=${transactionId}`, {
+  const commitPromise = fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -728,7 +728,7 @@ async function getAuditTrail(options = {}) {
   if (options.createdAfter) params.append('createdAfter', options.createdAfter);
   if (options.createdBefore) params.append('createdBefore', options.createdBefore);
   
-  const response = await fetch(`${baseUrl}/provisioning/directory/transactions?${params}`, {
+  const response = await fetch(`${baseUrl}/provisioning/iam/transactions?${params}`, {
     headers: defaultHeaders
   });
   
