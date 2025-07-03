@@ -61,9 +61,7 @@ class QMPlusClient {
   async commitTransaction(transactionId) {
     this.logger.info(`Committing transaction: ${transactionId}`);
     
-    const response = await this.http.post(`/provisioning/iam/commit`, null, {
-      params: { transactionId }
-    });
+    const response = await this.http.post(`/provisioning/iam/${transactionId}/commit`);
     
     const data = response.data;
     

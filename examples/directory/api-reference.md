@@ -43,7 +43,7 @@ POST /provisioning/iam/checkpoint
 Executes all queued operations atomically.
 
 ```http
-POST /provisioning/iam/commit?transactionId={transactionId}
+POST /provisioning/iam/{transactionId}/commit
 ```
 
 **Response:**

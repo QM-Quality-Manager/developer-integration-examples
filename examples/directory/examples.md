@@ -45,7 +45,7 @@ async function createUser() {
   });
 
   // 3. Commit transaction
-  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -80,7 +80,7 @@ async function bulkUserImport(users) {
   }
 
   // Commit all operations
-  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -194,7 +194,7 @@ async function setupOrganization() {
   });
 
   // Commit the structure
-  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -300,7 +300,7 @@ async function reorganizeDepartments() {
     body: JSON.stringify(changes)
   });
 
-  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -334,7 +334,7 @@ async function emergencyDeactivation(departmentExternalId) {
     body: JSON.stringify([deactivation])
   });
 
-  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
@@ -464,7 +464,7 @@ class DirectorySync {
   }
 
   async commitTransaction(transactionId) {
-    const response = await fetch(`${this.baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+    const response = await fetch(`${this.baseUrl}/provisioning/iam/${transactionId}/commit`, {
       method: 'POST',
       headers: this.headers
     });
@@ -541,7 +541,7 @@ async function robustSync(data) {
 async function commitWithRetry(transactionId, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+      const response = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
         method: 'POST',
         headers: defaultHeaders
       });
@@ -691,7 +691,7 @@ async function syncWithMonitoring(data) {
   await queueOperations(transactionId, data);
   
   // Start commit (don't await immediately)
-  const commitPromise = fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+  const commitPromise = fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
