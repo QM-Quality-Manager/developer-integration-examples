@@ -181,9 +181,51 @@ A message result might look like the message below.
 
 The alternative is to query the different groups based on the last time you updated your data storage.
 
-To do this you can query using the update field and a date expression.
+Examples of queries using dates to get the latest.
 
+> ** Date query**
+> updatedOn = { "preset": { "start": { "$gte": "2022-03-01T00:00:00.000Z" } } }
 
+In the examples below it's encoded using the js `encodeURIComponent` component
+
+#### `To fetch a specific set of category groups by ids`
+
+> `https://qmplus.app/api/categorygroups?updatedOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
+
+### Category Versions
+We use the `createdOn` field for versions as they do not have an updatedOn field.
+
+> `https://qmplus.app/api/categoryversions?createdOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
+
+### Form Types
+We use the `updatedOn` field
+
+> `https://qmplus.app/api/formtype?updatedOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
+
+### Form Versions
+We use the `createdOn` field for versions as they do not have an updatedOn field.
+
+> `https://qmplus.app/api/form/versions?createdOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
+
+### Priorities
+We use the `updatedOn` field
+
+> `https://qmplus.app/api/priority?updatedOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
+
+### Risk Version Models
+We use the `createdOn` field for versions as they do not have an updatedOn field.
+
+> `https://qmplus.app/api/riskmodel/version?createdOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
+
+### Department
+We use the `updatedOn` field
+
+> `https://qmplus.app/api/department?updatedOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
+
+### Workflows
+We use the `updatedOn` field
+
+> `https://qmplus.app/api/workflow?updatedOn=%7B%20%22preset%22%3A%20%7B%20%22start%22%3A%20%7B%20%22%24gte%22%3A%20%222022-03-01T00%3A00%3A00.000Z%22%20%7D%20%7D%20%7D`
 
 ## Required Entities
 To resolve all the fields in a form entry we need to extract the following entities.
@@ -203,13 +245,13 @@ Lets look at each of the entities and how to fetch them.
 To fetch category groups we use the following REST API endpoints.
 
 #### `To fetch a specific set of category groups by ids`
-> `https://qmplus.app/api/categorygroups/ids?ids=1&ids=2`
+> `https://qmplus.app/api/categorygroups?ids=1&ids=2`
 > [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/categorygroups/getCategoryGroups)
 
 ### Category Versions
 To fetch the category versions we use the following REST API endpoints.
 
-> `https://qmplus.app/api/categoryversions/ids?ids=1&ids=2`
+> `https://qmplus.app/api/categoryversions?ids=1&ids=2`
 > [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/categories/getCategoryVersionsByIds)
 
 ### Form Types
@@ -233,17 +275,17 @@ To fetch the priorities, we use the following REST API endpoints.
 ### Risk Version Models
 To fetch the risk model versions, we use the following REST API endpoints.
 
-> `https://qmplus.app/api/riskmodel/version/ids?ids=1&ids=2`
+> `https://qmplus.app/api/riskmodel/version?ids=1&ids=2`
 > [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/riskmodels/getVersionsByIds)
 
 ### Department
 To fetch the departments, we use the following REST API endpoints.
 
-> `https://qmplus.app/api/department/ids?ids=1&ids=2`
+> `https://qmplus.app/api/department?ids=1&ids=2`
 > [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/departments/getDepartmentsByIds)
 
 ### Workflows
 To fetch the departments, we use the following REST API endpoints.
 
-> `https://qmplus.app/api/workflow/ids?ids=1&ids=2`
+> `https://qmplus.app/api/workflow?ids=1&ids=2`
 > [API Documentation](https://qmplus.app/swagger-ui/index.html?contextPath=&requestServerName=qmplus.app#/workflows/getWorkflowByIds)
