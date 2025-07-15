@@ -122,40 +122,30 @@ class QMPlusClient {
   // ============================================================================
 
   /**
-   * Synchronize departments
+   * Synchronize departments (requires transaction)
    * @param {Array<Object>} departments - Array of department objects
-   * @param {string} transactionId - Optional transaction ID for batched operations
+   * @param {string} transactionId - Required transaction ID for queueing operations
    * @returns {Promise<Object>} Sync result
    */
-  async syncDepartments(departments, transactionId = null) {
+  async syncDepartments(departments, transactionId) {
     this.logger.info(`Syncing ${departments.length} departments`, {
       transactionMode: !!transactionId,
       transactionId
     });
 
-    if (transactionId) {
-      // Transaction mode - queue operations
-      const response = await this.http.post('/provisioning/iam/department', departments, {
-        params: { transactionId }
-      });
-      
-      this.logger.info(`Queued ${departments.length} department operations`, {
-        transactionId,
-        operationsQueued: response.data.operationsQueued
-      });
-      
-      return response.data;
-    } else {
-      // Direct mode - execute immediately
-      const response = await this.http.post('/provisioning/iam/department', departments);
-      
-      this.logger.info(`Processed ${response.data.processed} departments directly`, {
-        processed: response.data.processed,
-        errors: response.data.errors?.length || 0
-      });
-      
-      return response.data;
+    if (!transactionId) {
+      throw new Error('transactionId is required - all department operations require a transaction');
     }
+
+    // Transaction mode - queue operations
+    const response = await this.http.post(`/provisioning/iam/${transactionId}/department`, departments);
+    
+    this.logger.info(`Queued ${departments.length} department operations`, {
+      transactionId,
+      operationsQueued: response.data.operationsQueued
+    });
+    
+    return response.data;
   }
 
   /**

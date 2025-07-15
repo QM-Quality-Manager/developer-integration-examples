@@ -142,11 +142,11 @@ GET /provisioning/iam/transactions?status=COMPLETED&page=0&pageSize=20
 
 ## Department Management
 
-### Sync Departments (Transaction Mode)
+### Sync Departments
 Queues department operations within a transaction.
 
 ```http
-POST /provisioning/iam/department?transactionId={transactionId}
+POST /provisioning/iam/{transactionId}/department
 ```
 
 **Request Body:**
@@ -199,37 +199,7 @@ POST /provisioning/iam/department?transactionId={transactionId}
 }
 ```
 
-### Sync Departments (Direct Mode)
-Synchronizes departments immediately without transaction.
-
-```http
-POST /provisioning/iam/department
-```
-
-**Request Body:** Same as transaction mode
-
-**Response:**
-```json
-{
-  "status": true,
-  "processed": 2,
-  "errors": [],
-  "results": [
-    {
-      "id": "507f1f77bcf86cd799439011",
-      "directoryUniqueIdentifier": "dept-engineering",
-      "parentDepartmentId": "507f1f77bcf86cd799439012",
-      "parentDirectoryUniqueIdentifier": "dept-technology"
-    },
-    {
-      "id": "507f1f77bcf86cd799439013",
-      "directoryUniqueIdentifier": "dept-frontend",
-      "parentDepartmentId": "507f1f77bcf86cd799439011",
-      "parentDirectoryUniqueIdentifier": "dept-engineering"
-    }
-  ]
-}
-```
+**Note:** All department operations require a transaction. There is no direct synchronization mode for departments.
 
 ### Get Departments
 Retrieves all departments with optional filtering.
@@ -484,14 +454,78 @@ HTTP 403 Forbidden
 - **List Transactions**: 100 requests per minute
 - **Sync Operations**: 50 requests per minute
 
+## Transaction Workflow
+
+### Complete Sync Example
+Here's a complete workflow showing all required API calls:
+
+```javascript
+// 1. Create a transaction
+const checkpoint = await fetch('/api/provisioning/iam/checkpoint', {
+  method: 'POST',
+  headers: authHeaders
+});
+const { transactionId } = await checkpoint.json();
+
+// 2. Queue department operations (note: transactionId in path)
+await fetch(`/api/provisioning/iam/${transactionId}/department`, {
+  method: 'POST',
+  headers: authHeaders,
+  body: JSON.stringify([
+    {
+      externalId: "dept-engineering",
+      departmentName: "Engineering Department", 
+      active: true,
+      parentExternalId: null
+    }
+  ])
+});
+
+// 3. Queue user operations (note: transactionId in path)
+await fetch(`/api/provisioning/iam/${transactionId}/user`, {
+  method: 'POST',
+  headers: authHeaders,
+  body: JSON.stringify([
+    {
+      firstName: "John",
+      lastName: "Smith",
+      email: "john.smith@company.com",
+      externalId: "user-001",
+      active: true,
+      userTypes: [{
+        departmentExternalId: "dept-engineering",
+        userTypeId: "1"
+      }]
+    }
+  ])
+});
+
+// 4. Commit all operations atomically
+const result = await fetch(`/api/provisioning/iam/${transactionId}/commit`, {
+  method: 'POST',
+  headers: authHeaders
+});
+const commitResult = await result.json();
+
+console.log(`Success: ${commitResult.successfulOperations}/${commitResult.totalOperations}`);
+```
+
+### Transaction States
+1. **OPEN** - Transaction created, accepting operations
+2. **COMMITTED** - All operations queued, ready for processing
+3. **PROCESSING** - Operations being executed
+4. **COMPLETED** - All operations finished (may have failures)
+5. **FAILED** - Transaction could not be processed
+
 ## Best Practices
 
-1. **Always use transactions** for multi-operation syncs
+1. **Always use transactions** - All department operations require transactions
 2. **Process departments before users** (dependency order)
 3. **Use external IDs consistently** across systems
 4. **Implement retry logic** for failed operations
 5. **Monitor transaction status** for large operations
 6. **Use pagination** when listing transactions
+7. **Handle partial failures** - Some operations may succeed while others fail
 
 ---
 

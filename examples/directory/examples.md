@@ -187,7 +187,7 @@ async function setupOrganization() {
   ];
 
   // Add all departments
-  await fetch(`${baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
+  await fetch(`${baseUrl}/provisioning/iam/${transactionId}/department`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify(departments)
@@ -242,7 +242,7 @@ async function assignUserMultipleDepartments() {
     body: JSON.stringify([user])
   });
 
-  const result = await fetch(`${baseUrl}/provisioning/iam/commit?transactionId=${transactionId}`, {
+  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST', 
     headers: defaultHeaders
   });
@@ -294,7 +294,7 @@ async function reorganizeDepartments() {
     }
   ];
 
-  await fetch(`${baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
+  await fetch(`${baseUrl}/provisioning/iam/${transactionId}/department`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify(changes)
@@ -328,7 +328,7 @@ async function emergencyDeactivation(departmentExternalId) {
     cascadeToChildren: true
   };
 
-  await fetch(`${baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
+  await fetch(`${baseUrl}/provisioning/iam/${transactionId}/department`, {
     method: 'POST',
     headers: defaultHeaders,
     body: JSON.stringify([deactivation])

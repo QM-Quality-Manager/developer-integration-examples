@@ -38,10 +38,10 @@ The Identum integration provides a REST API for:
 2. **Authorization**: Ensure user has required roles (`PROVISIONING_UPDATE`, `PROVISIONING_SEARCH`)
 3. **Basic Workflow**:
    ```
-   POST /api/provisioning/iam/checkpoint         # Create transaction
-   POST /api/provisioning/iam/department         # Add departments
-   POST /api/provisioning/iam/{transactionId}/user    # Add users
-   POST /api/provisioning/iam/{transactionId}/commit  # Execute atomically
+   POST /api/provisioning/iam/checkpoint                     # Create transaction
+   POST /api/provisioning/iam/{transactionId}/department     # Add departments
+   POST /api/provisioning/iam/{transactionId}/user           # Add users
+   POST /api/provisioning/iam/{transactionId}/commit         # Execute atomically
    ```
 
 ## Documentation Structure
