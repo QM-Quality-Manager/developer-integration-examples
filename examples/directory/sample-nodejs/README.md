@@ -122,18 +122,42 @@ const result = await client.syncDepartments([{
 }]);
 ```
 
+### Pagination Examples
+```javascript
+// Get first 50 transactions
+const firstPage = await client.listTransactions({
+  skip: 0,
+  limit: 50
+});
+
+// Get next 50 transactions
+const secondPage = await client.listTransactions({
+  skip: 50,
+  limit: 50
+});
+
+// Get users with pagination
+const users = await client.getUsers({
+  active: true,
+  skip: 0,
+  limit: 100
+});
+
+console.log(`Total users: ${users.total}, Returned: ${users.entries.length}`);
+```
+
 ## API Client Methods
 
 ### Transaction Management
 - `client.createCheckpoint()` - Create new transaction
 - `client.commitTransaction(transactionId)` - Execute operations
 - `client.getTransactionStatus(transactionId)` - Check status
-- `client.listTransactions(filters)` - Get transaction history
+- `client.listTransactions(filters)` - Get transaction history with skip/limit pagination
 
 ### Data Synchronization
 - `client.syncUsers(users, transactionId?)` - Sync users
 - `client.syncDepartments(departments, transactionId?)` - Sync departments
-- `client.getUsers(filters?)` - Retrieve users
+- `client.getUsers(filters?)` - Retrieve users with optional skip/limit pagination
 - `client.getDepartments(filters?)` - Retrieve departments
 
 ### Convenience Methods

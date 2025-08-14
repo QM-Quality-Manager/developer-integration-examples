@@ -100,16 +100,16 @@ GET /provisioning/iam/transactions
 ```
 
 **Query Parameters:**
-- `status` (optional): Filter by status (OPEN, COMMITTED, PROCESSING, COMPLETED, FAILED, ROLLED_BACK)
+- `status` (optional): Filter by status (OPEN, PROCESSING, COMPLETED, FAILED)
 - `createdBy` (optional): Filter by user ID who created transaction
 - `createdAfter` (optional): Filter by creation date (ISO format: yyyy-MM-ddTHH:mm:ss)
 - `createdBefore` (optional): Filter by creation date
-- `page` (optional, default: 0): Page number
-- `pageSize` (optional, default: 50, max: 1000): Items per page
+- `skip` (optional, default: 0): Number of records to skip for pagination
+- `limit` (optional, default: 50, max: 1000): Maximum number of records to return
 
 **Example:**
 ```http
-GET /provisioning/iam/transactions?status=COMPLETED&page=0&pageSize=20
+GET /provisioning/iam/transactions?status=COMPLETED&skip=0&limit=20
 ```
 
 **Response:**
@@ -133,8 +133,8 @@ GET /provisioning/iam/transactions?status=COMPLETED&page=0&pageSize=20
     }
   ],
   "totalCount": 157,
-  "page": 0,
-  "pageSize": 20
+  "skip": 0,
+  "limit": 20
 }
 ```
 
@@ -290,14 +290,16 @@ POST /provisioning/iam/{transactionId}/user
 ```
 
 ### Get Users
-Retrieves all users with optional filtering.
+Retrieves all users with optional filtering and pagination.
 
 ```http
-GET /provisioning/iam/user?active=true
+GET /provisioning/iam/user?active=true&skip=0&limit=50
 ```
 
 **Query Parameters:**
 - `active` (optional): Filter by active status (true/false)
+- `skip` (optional): Number of records to skip for pagination
+- `limit` (optional, max: 1000): Maximum number of records to return
 
 **Response:**
 ```json
@@ -327,7 +329,8 @@ GET /provisioning/iam/user?active=true
         }
       ]
     }
-  ]
+  ],
+  "total": 150
 }
 ```
 
@@ -380,7 +383,152 @@ Update only the target department:
 
 ## Error Responses
 
-### Validation Error
+All errors follow a consistent structure. The API returns appropriate HTTP status codes along with structured error responses.
+
+### Error Response Structure
+
+```json
+{
+  "status": false,
+  "message": "Description of the error",
+  "errors": [
+    {
+      "code": "ERROR_TYPE",
+      "paths": ["field.path"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Human-readable error message",
+          "key": "error.code.key"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### HTTP Status Codes
+
+- **400 Bad Request** - Validation errors, malformed requests
+- **401 Unauthorized** - Missing or invalid authentication
+- **403 Forbidden** - Insufficient permissions
+- **404 Not Found** - Resource not found
+- **500 Internal Server Error** - Server errors
+
+### Common Error Codes
+
+#### Transaction Errors
+
+**Transaction Not Found**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["transactionId"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Transaction not found",
+          "key": "iam.transaction.not_found"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Transaction Not Open**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["transactionId"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Transaction is not in open status",
+          "key": "iam.transaction.not_open"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Invalid Transaction Status**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["status"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Invalid transaction status. Valid values are: OPEN, PROCESSING, COMPLETED, FAILED",
+          "key": "iam.transaction.invalid_status"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Pagination Errors
+
+**Invalid Skip Parameter**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["skip"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Skip must be 0 or greater",
+          "key": "iam.transaction.invalid_skip"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Invalid Limit Parameter**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["limit"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Limit must be between 1 and 1000",
+          "key": "iam.transaction.invalid_limit"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Department Errors
+
+**Department Not Found**
 ```json
 {
   "status": false,
@@ -392,8 +540,8 @@ Update only the target department:
       "messages": [
         {
           "locale": "US",
-          "message": "Parent department not found: dept-nonexistent",
-          "key": "identum.department.parent.notfound"
+          "message": "Department not found",
+          "key": "iam.provisioning.department.notFound"
         }
       ]
     }
@@ -401,7 +549,55 @@ Update only the target department:
 }
 ```
 
-### Authentication Error
+#### User Type Errors
+
+**User Type Not Found**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["users.0.userTypes.0.userTypeId"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "User type not found",
+          "key": "iam.provisioning.userType.notFound"
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Date Format Errors
+
+**Invalid Date Format**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["createdAfter"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Invalid date format. Expected: yyyy-MM-ddTHH:mm:ss",
+          "key": "iam.transaction.invalid_date"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Authentication Errors
+
+**Missing Authentication**
 ```http
 HTTP 401 Unauthorized
 ```
@@ -409,13 +605,27 @@ HTTP 401 Unauthorized
 {
   "status": false,
   "message": "Authentication failed",
-  "error": "Invalid or missing auth-token"
+  "error": "Missing required authentication headers: auth-tenant-id, auth-token"
 }
 ```
 
-### Authorization Error
+**Invalid Authentication**
 ```http
-HTTP 403 Forbidden  
+HTTP 401 Unauthorized
+```
+```json
+{
+  "status": false,
+  "message": "Authentication failed",
+  "error": "Invalid or expired auth-token"
+}
+```
+
+### Authorization Errors
+
+**Insufficient Permissions**
+```http
+HTTP 403 Forbidden
 ```
 ```json
 {
@@ -425,25 +635,68 @@ HTTP 403 Forbidden
 }
 ```
 
-### Transaction Error
+**Read-Only Access**
+```http
+HTTP 403 Forbidden
+```
 ```json
 {
   "status": false,
-  "message": "Transaction not found",
+  "message": "Access denied",
+  "error": "Missing required role: PROVISIONING_SEARCH"
+}
+```
+
+### Commit Transaction Errors
+
+During transaction commit, multiple operations may fail. The response includes details for each failure:
+
+```json
+{
+  "status": true,
+  "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+  "totalOperations": 25,
+  "successfulOperations": 23,
+  "failedOperations": 2,
   "errors": [
     {
       "code": "VALIDATION",
-      "paths": ["transactionId"],
+      "paths": ["operation.15"],
       "messages": [
         {
           "locale": "US",
-          "message": "Transaction with ID 550e8400-e29b-41d4-a716-446655440000 not found"
+          "message": "Department not found: dept-xyz",
+          "key": "iam.provisioning.department.notFound"
+        }
+      ]
+    },
+    {
+      "code": "VALIDATION", 
+      "paths": ["operation.18"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "User type not found",
+          "key": "iam.provisioning.userType.notFound"
         }
       ]
     }
   ]
 }
 ```
+
+### Error Code Reference
+
+| Error Key | Description | HTTP Status | Common Causes |
+|-----------|-------------|-------------|---------------|
+| `iam.transaction.not_found` | Transaction not found | 400 | Invalid transaction ID |
+| `iam.transaction.not_open` | Transaction not in open status | 400 | Attempting to modify committed transaction |
+| `iam.transaction.invalid_status` | Invalid status filter value | 400 | Invalid status in query parameter |
+| `iam.transaction.invalid_date` | Invalid date format | 400 | Wrong date format in query |
+| `iam.transaction.invalid_limit` | Invalid limit parameter | 400 | Limit out of range (1-1000) |
+| `iam.transaction.invalid_skip` | Invalid skip parameter | 400 | Negative skip value |
+| `iam.provisioning.department.notFound` | Department not found | 400 | Invalid department external ID |
+| `iam.provisioning.userType.notFound` | User type not found | 400 | Invalid user type ID |
 
 ---
 
@@ -476,7 +729,8 @@ await fetch(`/api/provisioning/iam/${transactionId}/department`, {
       externalId: "dept-engineering",
       departmentName: "Engineering Department", 
       active: true,
-      parentExternalId: null
+      parentExternalId: null,
+      cascadeToChildren: false
     }
   ])
 });
@@ -490,6 +744,7 @@ await fetch(`/api/provisioning/iam/${transactionId}/user`, {
       firstName: "John",
       lastName: "Smith",
       email: "john.smith@company.com",
+      phoneNumber: "+1-555-123-4567",
       externalId: "user-001",
       active: true,
       userTypes: [{
@@ -508,6 +763,88 @@ const result = await fetch(`/api/provisioning/iam/${transactionId}/commit`, {
 const commitResult = await result.json();
 
 console.log(`Success: ${commitResult.successfulOperations}/${commitResult.totalOperations}`);
+```
+
+### Multi-Department User Example
+Users can belong to multiple departments with different roles:
+
+```json
+{
+  "firstName": "Jane",
+  "lastName": "Smith", 
+  "email": "jane.smith@company.com",
+  "phoneNumber": "9876543210",
+  "externalId": "ext456",
+  "active": true,
+  "userTypes": [
+    {
+      "departmentExternalId": "dept-engineering",
+      "userTypeId": "1"
+    },
+    {
+      "departmentExternalId": "dept-frontend",
+      "userTypeId": "2" 
+    }
+  ]
+}
+```
+
+### Department Hierarchy Example
+Creating a department hierarchy with parent-child relationships:
+
+```json
+[
+  {
+    "externalId": "dept-technology",
+    "departmentName": "Technology Division",
+    "active": true,
+    "parentExternalId": null,
+    "cascadeToChildren": true
+  },
+  {
+    "externalId": "dept-engineering", 
+    "departmentName": "Engineering Department",
+    "active": true,
+    "parentExternalId": "dept-technology",
+    "cascadeToChildren": false
+  },
+  {
+    "externalId": "dept-frontend",
+    "departmentName": "Frontend Team", 
+    "active": true,
+    "parentExternalId": "dept-engineering",
+    "cascadeToChildren": true
+  }
+]
+```
+
+### Pagination Example
+Working with large datasets using skip/limit:
+
+```javascript
+// Get first 50 transactions
+const page1 = await fetch('/api/provisioning/iam/transactions?skip=0&limit=50');
+const firstPage = await page1.json();
+
+// Get next 50 transactions 
+const page2 = await fetch(`/api/provisioning/iam/transactions?skip=50&limit=50`);
+const secondPage = await page2.json();
+
+console.log(`Total: ${firstPage.totalCount}, Page 1: ${firstPage.transactions.length} items`);
+```
+
+### Filtering Transactions Example
+Filter transactions by status and date:
+
+```javascript
+// Get completed transactions from last week
+const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+const dateFilter = lastWeek.toISOString().slice(0, 19); // yyyy-MM-ddTHH:mm:ss
+
+const response = await fetch(
+  `/api/provisioning/iam/transactions?status=COMPLETED&createdAfter=${dateFilter}&limit=100`
+);
+const completedTransactions = await response.json();
 ```
 
 ### Transaction States

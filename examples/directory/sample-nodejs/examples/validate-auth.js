@@ -60,7 +60,7 @@ async function validateAuth() {
     
     // Test PROVISIONING_SEARCH permission
     try {
-      const transactions = await client.listTransactions({ pageSize: 1 });
+      const transactions = await client.listTransactions({ limit: 1 });
       console.log('✅ PROVISIONING_SEARCH permission confirmed');
       console.log(`   • Found ${transactions.totalCount} total transactions`);
     } catch (error) {

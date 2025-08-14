@@ -98,14 +98,14 @@ class QMPlusClient {
    * @param {string} filters.createdBy - Filter by creator
    * @param {string} filters.createdAfter - Filter by creation date
    * @param {string} filters.createdBefore - Filter by creation date
-   * @param {number} filters.page - Page number (default: 0)
-   * @param {number} filters.pageSize - Page size (default: 50)
+   * @param {number} filters.skip - Number of records to skip (default: 0)
+   * @param {number} filters.limit - Maximum number of records (default: 50, max: 1000)
    * @returns {Promise<Object>} List of transactions
    */
   async listTransactions(filters = {}) {
     const params = {
-      page: filters.page || 0,
-      pageSize: filters.pageSize || 50
+      skip: filters.skip || 0,
+      limit: filters.limit || 50
     };
     
     if (filters.status) params.status = filters.status;
@@ -205,14 +205,18 @@ class QMPlusClient {
   }
 
   /**
-   * Get users with optional filtering
+   * Get users with optional filtering and pagination
    * @param {Object} filters - Filter options
    * @param {boolean} filters.active - Filter by active status
+   * @param {number} filters.skip - Number of records to skip
+   * @param {number} filters.limit - Maximum number of records (max: 1000)
    * @returns {Promise<Object>} List of users
    */
   async getUsers(filters = {}) {
     const params = {};
     if (filters.active !== undefined) params.active = filters.active;
+    if (filters.skip !== undefined) params.skip = filters.skip;
+    if (filters.limit !== undefined) params.limit = filters.limit;
     
     const response = await this.http.get('/provisioning/iam/user', { params });
     return response.data;
@@ -394,7 +398,7 @@ class QMPlusClient {
    */
   async validateAuth() {
     try {
-      await this.listTransactions({ pageSize: 1 });
+      await this.listTransactions({ limit: 1 });
       this.logger.info('Authentication validation successful');
       return true;
     } catch (error) {

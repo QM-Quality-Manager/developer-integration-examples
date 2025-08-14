@@ -271,7 +271,7 @@ async function demonstrateMonitoring() {
   // Get recent transactions for monitoring demo
   console.log('📊 Recent transaction history:');
   const recentTransactions = await client.listTransactions({
-    pageSize: 5
+    limit: 5
   });
   
   if (recentTransactions.transactions.length === 0) {
