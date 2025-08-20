@@ -202,29 +202,88 @@ POST /provisioning/iam/{transactionId}/department
 **Note:** All department operations require a transaction. There is no direct synchronization mode for departments.
 
 ### Get Departments
-Retrieves all departments with optional filtering.
+Retrieves all departments with optional filtering and pagination.
 
 ```http
-GET /provisioning/iam/department?active=true
+GET /provisioning/iam/department?active=true&createdOn=LAST_30_DAYS&updatedOn=LAST_7_DAYS&skip=0&limit=50
 ```
 
 **Query Parameters:**
 - `active` (optional): Filter by active status (true/false)
+- `createdOn` (optional): Filter by creation date using PipelineDateRange preset (see presets below)
+- `updatedOn` (optional): Filter by update date using PipelineDateRange preset (see presets below)
+- `skip` (optional, default: 0): Number of records to skip for pagination
+- `limit` (optional, default: 50, max: 1000): Maximum number of records to return
+
+**PipelineDateRange Presets:**
+- `TODAY`, `YESTERDAY`
+- `LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`
+- `THIS_WEEK`, `LAST_WEEK`
+- `THIS_MONTH`, `LAST_MONTH`
+- `THIS_QUARTER`, `LAST_QUARTER`
+- `THIS_YEAR`, `LAST_YEAR`
+- `CUSTOM` (requires additional configuration)
+
+**Example Queries:**
+
+Basic query - all departments:
+```http
+GET /provisioning/iam/department
+```
+
+Filter by active departments with pagination:
+```http
+GET /provisioning/iam/department?active=true&skip=0&limit=100
+```
+
+Filter by recent changes:
+```http
+GET /provisioning/iam/department?updatedOn=LAST_7_DAYS
+```
+
+Combined filters:
+```http
+GET /provisioning/iam/department?active=true&createdOn=LAST_30_DAYS&updatedOn=LAST_7_DAYS&limit=50
+```
 
 **Response:**
 ```json
 {
   "status": true,
-  "entries": [
+  "departments": [
     {
       "id": "507f1f77bcf86cd799439011",
-      "directoryUniqueIdentifier": "dept-engineering",
+      "name": "Engineering Department",
+      "externalId": "dept-engineering",
       "parentDepartmentId": "507f1f77bcf86cd799439012",
-      "parentDirectoryUniqueIdentifier": "dept-technology"
+      "parentExternalId": "dept-technology",
+      "createdOn": "2024-01-15T10:30:00Z",
+      "updatedOn": "2024-02-01T14:45:00Z",
+      "active": true
     }
-  ]
+  ],
+  "totalCount": 25,
+  "skip": 0,
+  "limit": 50
 }
 ```
+
+**Response Fields:**
+- `status`: Boolean indicating request success
+- `departments`: Array of department objects
+- `totalCount`: Total number of departments matching filter criteria
+- `skip`: Number of records skipped (pagination)
+- `limit`: Maximum number of records returned
+
+**Department Object Fields:**
+- `id`: Internal department ID
+- `name`: Department display name
+- `externalId`: External directory unique identifier (same as directoryUniqueIdentifier)
+- `parentDepartmentId`: Internal parent department ID
+- `parentExternalId`: External parent directory unique identifier
+- `createdOn`: Department creation timestamp
+- `updatedOn`: Last modification timestamp
+- `active`: Department active status
 
 ---
 
@@ -595,6 +654,48 @@ All errors follow a consistent structure. The API returns appropriate HTTP statu
 }
 ```
 
+**Invalid Date Range Preset**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["createdOn"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Invalid date range preset. Valid values are: TODAY, YESTERDAY, LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, THIS_WEEK, LAST_WEEK, THIS_MONTH, LAST_MONTH, THIS_QUARTER, LAST_QUARTER, THIS_YEAR, LAST_YEAR, CUSTOM",
+          "key": "iam.department.invalid_date_range"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Invalid Date Range JSON Format**
+```json
+{
+  "status": false,
+  "message": "Validation failed",
+  "errors": [
+    {
+      "code": "VALIDATION",
+      "paths": ["updatedOn"],
+      "messages": [
+        {
+          "locale": "US",
+          "message": "Invalid date range format. Expected PipelineDateRange JSON object or preset string.",
+          "key": "iam.department.invalid_date_format"
+        }
+      ]
+    }
+  ]
+}
+```
+
 ### Authentication Errors
 
 **Missing Authentication**
@@ -695,6 +796,8 @@ During transaction commit, multiple operations may fail. The response includes d
 | `iam.transaction.invalid_date` | Invalid date format | 400 | Wrong date format in query |
 | `iam.transaction.invalid_limit` | Invalid limit parameter | 400 | Limit out of range (1-1000) |
 | `iam.transaction.invalid_skip` | Invalid skip parameter | 400 | Negative skip value |
+| `iam.department.invalid_date_range` | Invalid date range preset | 400 | Invalid preset value in createdOn/updatedOn |
+| `iam.department.invalid_date_format` | Invalid date range JSON format | 400 | Malformed PipelineDateRange JSON |
 | `iam.provisioning.department.notFound` | Department not found | 400 | Invalid department external ID |
 | `iam.provisioning.userType.notFound` | User type not found | 400 | Invalid user type ID |
 
@@ -845,6 +948,89 @@ const response = await fetch(
   `/api/provisioning/iam/transactions?status=COMPLETED&createdAfter=${dateFilter}&limit=100`
 );
 const completedTransactions = await response.json();
+```
+
+### Department Filtering Examples
+Enhanced department filtering for directory synchronization:
+
+```javascript
+// Initial sync - get all active departments
+const allActiveDepts = await fetch('/api/provisioning/iam/department?active=true');
+const activeDepartments = await allActiveDepts.json();
+
+// Incremental sync - get departments updated in last 7 days
+const recentChanges = await fetch('/api/provisioning/iam/department?updatedOn=LAST_7_DAYS');
+const changedDepartments = await recentChanges.json();
+
+// Combined filtering - active departments created this month
+const newActiveDepts = await fetch('/api/provisioning/iam/department?active=true&createdOn=THIS_MONTH&limit=100');
+const newDepartments = await newActiveDepts.json();
+
+// Pagination through large datasets
+let skip = 0;
+const limit = 50;
+let hasMore = true;
+
+while (hasMore) {
+  const response = await fetch(`/api/provisioning/iam/department?skip=${skip}&limit=${limit}`);
+  const data = await response.json();
+  
+  // Process data.departments
+  console.log(`Processing ${data.departments.length} departments (${skip}-${skip + data.departments.length} of ${data.totalCount})`);
+  
+  skip += limit;
+  hasMore = skip < data.totalCount;
+}
+```
+
+### Directory Sync Integration Pattern
+Complete workflow for directory service integration:
+
+```javascript
+class DirectorySync {
+  async performIncrementalSync() {
+    try {
+      // 1. Get departments changed since last sync
+      const changedDepts = await this.getChangedDepartments();
+      
+      // 2. Create transaction for any updates needed
+      if (changedDepts.departments.length > 0) {
+        const transaction = await this.createTransaction();
+        
+        // 3. Queue department updates
+        await this.queueDepartmentUpdates(transaction.transactionId, changedDepts.departments);
+        
+        // 4. Commit changes
+        const result = await this.commitTransaction(transaction.transactionId);
+        
+        console.log(`Sync completed: ${result.successfulOperations}/${result.totalOperations} successful`);
+      }
+      
+      // 5. Update last sync timestamp
+      this.updateLastSyncTime();
+      
+    } catch (error) {
+      console.error('Sync failed:', error);
+      throw error;
+    }
+  }
+  
+  async getChangedDepartments() {
+    const lastSync = this.getLastSyncTime();
+    const preset = this.getDateRangePreset(lastSync);
+    
+    return fetch(`/api/provisioning/iam/department?updatedOn=${preset}&active=true`);
+  }
+  
+  getDateRangePreset(lastSync) {
+    const daysSince = Math.floor((Date.now() - lastSync) / (24 * 60 * 60 * 1000));
+    
+    if (daysSince <= 1) return 'TODAY';
+    if (daysSince <= 7) return 'LAST_7_DAYS';
+    if (daysSince <= 30) return 'LAST_30_DAYS';
+    return 'LAST_90_DAYS';
+  }
+}
 ```
 
 ### Transaction States
