@@ -92,6 +92,16 @@ class QMPlusClient {
   }
 
   /**
+   * Get background job details and progress
+   * @param {string} jobId - Job ID to check
+   * @returns {Promise<Object>} Job details and status
+   */
+  async getJob(jobId) {
+    const response = await this.http.get(`/user/job/${jobId}`);
+    return response.data;
+  }
+
+  /**
    * List transactions with optional filtering
    * @param {Object} filters - Filter options
    * @param {string} filters.status - Filter by status

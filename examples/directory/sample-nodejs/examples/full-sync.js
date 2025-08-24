@@ -221,12 +221,43 @@ async function performFullSync() {
     
     if (result.failedOperations > 0) {
       console.log('\n⚠️  Some operations failed:');
-      result.errors?.forEach((error, index) => {
-        console.log(`   ${index + 1}. ${error.messages?.[0]?.message || 'Unknown error'}`);
-        if (error.paths?.length > 0) {
-          console.log(`      Path: ${error.paths.join(', ')}`);
+      
+      // Get detailed failure information
+      const transactionStatus = await client.getTransactionStatus(result.transactionId);
+      
+      if (transactionStatus.failures && transactionStatus.failures.length > 0) {
+        transactionStatus.failures.forEach((failure, index) => {
+          console.log(`\n   ${index + 1}. Operation ${failure.operationId}`);
+          console.log(`      • Type: ${failure.operationType} ${failure.operationAction}`);
+          console.log(`      • Entity: ${failure.entityName || 'Unknown'}`);
+          console.log(`      • Error: ${failure.errorMessage}`);
+          console.log(`      • Category: ${failure.errorType}`);
+        });
+        
+        // Provide recommendations
+        console.log('\n💡 Recommendations:');
+        const hasValidationErrors = transactionStatus.failures.some(f => f.errorType === 'VALIDATION');
+        const hasDataFormatErrors = transactionStatus.failures.some(f => f.errorType === 'DATA_FORMAT');
+        const hasNotFoundErrors = transactionStatus.failures.some(f => f.errorType === 'NOT_FOUND');
+        
+        if (hasValidationErrors) {
+          console.log('   • Check for duplicate external IDs and missing required fields');
         }
-      });
+        if (hasDataFormatErrors) {
+          console.log('   • Verify JSON field names match the expected schema');
+        }
+        if (hasNotFoundErrors) {
+          console.log('   • Ensure parent departments and user types exist');
+        }
+      } else {
+        // Fallback to old error format if available
+        result.errors?.forEach((error, index) => {
+          console.log(`   ${index + 1}. ${error.messages?.[0]?.message || 'Unknown error'}`);
+          if (error.paths?.length > 0) {
+            console.log(`      Path: ${error.paths.join(', ')}`);
+          }
+        });
+      }
     }
     
     // Display summary of what was created/updated

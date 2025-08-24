@@ -9,7 +9,7 @@
     "test": "node test.js",
     "sync": "node examples/full-sync.js",
     "validate": "node examples/validate-auth.js",
-    "monitor": "node examples/monitor-transactions.js"
+    "failure-demo": "node examples/failure-tracking.js"
   },
   "keywords": [
     "qmplus",

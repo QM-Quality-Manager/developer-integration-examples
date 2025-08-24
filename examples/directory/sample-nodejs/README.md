@@ -46,10 +46,8 @@ sample-nodejs/
 │   └── validators.js         # Data validation
 ├── examples/
 │   ├── full-sync.js          # Complete sync example
-│   ├── department-cascade.js # Cascade operations
-│   ├── user-management.js    # User operations
-│   ├── validate-auth.js      # Auth validation
-│   └── monitor-transactions.js # Transaction monitoring
+│   ├── failure-tracking.js   # Error handling and failure analysis
+│   └── validate-auth.js      # Auth validation
 ├── data/
 │   ├── sample-departments.json
 │   └── sample-users.json
@@ -151,7 +149,8 @@ console.log(`Total users: ${users.total}, Returned: ${users.entries.length}`);
 ### Transaction Management
 - `client.createCheckpoint()` - Create new transaction
 - `client.commitTransaction(transactionId)` - Execute operations
-- `client.getTransactionStatus(transactionId)` - Check status
+- `client.getTransactionStatus(transactionId)` - Check status with failure details
+- `client.getJob(jobId)` - Get background job progress and details
 - `client.listTransactions(filters)` - Get transaction history with skip/limit pagination
 
 ### Data Synchronization
@@ -165,10 +164,11 @@ console.log(`Total users: ${users.total}, Returned: ${users.entries.length}`);
 - `client.bulkUserImport(users)` - Large user import
 - `client.organizationSetup(hierarchy)` - Department structure setup
 
-## Error Handling
+## Error Handling & Failure Tracking
 
-The client includes comprehensive error handling:
+The client includes comprehensive error handling and detailed failure analysis:
 
+### Basic Error Handling
 ```javascript
 try {
   const result = await client.syncUsers(users);
@@ -183,6 +183,66 @@ try {
   }
 }
 ```
+
+### Advanced Failure Analysis
+```javascript
+// Get detailed failure information for a transaction
+const transactionStatus = await client.getTransactionStatus(transactionId);
+
+if (transactionStatus.failedOperations > 0) {
+  console.log('Failed operations:', transactionStatus.failures);
+  
+  transactionStatus.failures.forEach(failure => {
+    console.log(`Operation ${failure.operationId}:`);
+    console.log(`  Type: ${failure.operationType} ${failure.operationAction}`);
+    console.log(`  Entity: ${failure.entityName}`);
+    console.log(`  Error: ${failure.errorMessage}`);
+    console.log(`  Category: ${failure.errorType}`);
+    
+    // Handle different error types
+    switch (failure.errorType) {
+      case 'VALIDATION':
+        // Check for duplicate external IDs, missing fields
+        break;
+      case 'DATA_FORMAT':
+        // Fix JSON structure or field names
+        break;
+      case 'NOT_FOUND':
+        // Create missing dependencies first
+        break;
+      case 'DUPLICATE':
+        // Use UPDATE instead of CREATE
+        break;
+      case 'SYSTEM':
+        // Retry with exponential backoff
+        break;
+    }
+  });
+}
+```
+
+### Background Job Monitoring
+```javascript
+// Monitor background job progress
+const commitResult = await client.commitTransaction(transactionId);
+const jobDetails = await client.getJob(commitResult.jobId);
+
+console.log(`Job Status: ${jobDetails.value.status}`);
+console.log(`Progress: ${jobDetails.value.donePercentage}%`);
+
+if (jobDetails.value.updates) {
+  jobDetails.value.updates.forEach(update => {
+    console.log(`${update.timestamp}: ${update.message}`);
+  });
+}
+```
+
+### Error Types & Retry Strategies
+- **VALIDATION**: Data validation failed → Fix data and resubmit (don't retry)
+- **DATA_FORMAT**: JSON parsing failed → Fix JSON structure (don't retry)
+- **DUPLICATE**: Entity already exists → Use UPDATE operation (don't retry)
+- **NOT_FOUND**: Referenced entity missing → Create dependencies first (can retry after fix)
+- **SYSTEM**: Internal system error → Retry with exponential backoff
 
 ## Monitoring
 
@@ -241,7 +301,7 @@ npm run validate
 - `npm run dev` - Run with auto-reload
 - `npm run sync` - Execute full sync example
 - `npm run validate` - Test authentication
-- `npm run monitor` - Monitor recent transactions
+- `npm run failure-demo` - Demonstrate failure tracking and error analysis
 
 ## Logging
 

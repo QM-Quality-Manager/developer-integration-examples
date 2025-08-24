@@ -211,3 +211,534 @@ The endpoint queries the `departments` collection with the following indexed fie
 ### Locale Support
 
 Date range filtering supports locale-specific formatting. The default locale is `en-GB`, but can be configured based on tenant settings.
+
+## Transaction Management API
+
+The IAM Provisioning API supports transaction-based operations for bulk synchronization of departments and users. This ensures data consistency and allows for rollback capabilities.
+
+### Transaction Workflow
+
+1. **Create Checkpoint** - Start a new transaction
+2. **Sync Operations** - Add departments/users to the transaction
+3. **Commit Transaction** - Execute operations as a background job
+4. **Track Progress** - Monitor job and transaction status
+
+### Create Checkpoint
+
+Creates a new transaction for bulk operations.
+
+#### Endpoint
+
+```
+POST /provisioning/iam/checkpoint
+```
+
+#### Response Format
+
+```json
+{
+  "status": true,
+  "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "Transaction checkpoint created successfully"
+}
+```
+
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | Boolean | Indicates if the request was successful |
+| `transactionId` | String | Unique identifier for the transaction |
+| `message` | String | Status message |
+
+### Sync Operations
+
+After creating a checkpoint, you can add operations to the transaction:
+
+- **Sync Departments**: `POST /provisioning/iam/department/sync/{transactionId}`
+- **Sync Users**: `POST /provisioning/iam/user/sync/{transactionId}`
+
+### Commit Transaction
+
+Executes all operations in the transaction as a background job.
+
+#### Endpoint
+
+```
+POST /provisioning/iam/transaction/{transactionId}/commit
+```
+
+#### Response Format
+
+```json
+{
+  "status": true,
+  "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+  "jobId": "507f1f77bcf86cd799439011",
+  "message": "Transaction committed successfully as background job"
+}
+```
+
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | Boolean | Indicates if the commit was accepted |
+| `transactionId` | String | Transaction identifier |
+| `jobId` | String | Background job identifier for tracking |
+| `message` | String | Status message |
+
+## Progress Tracking
+
+### Transaction Status
+
+Monitor the progress of a transaction using the transaction status endpoint.
+
+#### Endpoint
+
+```
+GET /provisioning/iam/transaction/{transactionId}/status
+```
+
+#### Response Format
+
+```json
+{
+  "status": true,
+  "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+  "transactionStatus": "COMPLETED",
+  "totalOperations": 150,
+  "completedOperations": 145,
+  "failedOperations": 5,
+  "createdOn": "2024-01-15T10:30:00Z",
+  "committedOn": "2024-01-15T10:35:00Z",
+  "completedOn": "2024-01-15T10:45:00Z",
+  "failures": [
+    {
+      "operationId": "op-42",
+      "operationType": "DEPARTMENT",
+      "operationAction": "CREATE",
+      "externalId": "ext-dept-duplicate",
+      "entityName": "Marketing Department",
+      "errorMessage": "Department with external ID 'ext-dept-duplicate' already exists",
+      "errorType": "VALIDATION",
+      "failedOn": "2024-01-15T10:42:30Z",
+      "details": {
+        "operationId": "42",
+        "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+        "exceptionType": "ValidationError"
+      }
+    },
+    {
+      "operationId": "op-87",
+      "operationType": "USER",
+      "operationAction": "CREATE",
+      "externalId": "ext-user-001",
+      "entityName": "John Smith",
+      "errorMessage": "User email 'john.smith@company.com' is already registered",
+      "errorType": "VALIDATION",
+      "failedOn": "2024-01-15T10:43:15Z",
+      "details": {
+        "operationId": "87",
+        "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+        "exceptionType": "ValidationError",
+        "email": "john.smith@company.com"
+      }
+    }
+  ]
+}
+```
+
+#### Transaction Status Values
+
+- `OPEN` - Transaction is accepting operations
+- `COMMITTED` - Transaction has been committed for processing
+- `PROCESSING` - Background job is executing operations
+- `COMPLETED` - All operations have been processed
+- `FAILED` - Transaction processing failed
+- `ROLLED_BACK` - Transaction was rolled back
+
+#### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | Boolean | Indicates if the request was successful |
+| `transactionId` | String | Transaction identifier |
+| `transactionStatus` | String | Current transaction status |
+| `totalOperations` | Integer | Total number of operations in the transaction |
+| `completedOperations` | Integer | Number of successfully completed operations |
+| `failedOperations` | Integer | Number of operations that failed |
+| `createdOn` | String | When the transaction was created |
+| `committedOn` | String | When the transaction was committed for processing |
+| `completedOn` | String | When the transaction processing completed |
+| `failures` | Array | Detailed information about each failed operation (null if no failures) |
+
+#### Failure Object Structure
+
+Each entry in the `failures` array contains detailed information about why a specific operation failed:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `operationId` | String | Unique identifier for the failed operation |
+| `operationType` | String | Type of operation ("DEPARTMENT" or "USER") |
+| `operationAction` | String | Action that was attempted ("CREATE", "UPDATE", "DELETE") |
+| `externalId` | String | External ID of the entity being processed |
+| `entityName` | String | Name of the entity (department name or user full name) |
+| `errorMessage` | String | Detailed human-readable error message |
+| `errorType` | String | Category of error (see Error Types below) |
+| `failedOn` | String | When the operation failed |
+| `details` | Object | Additional context-specific information |
+
+#### Error Types
+
+| Error Type | Description | Common Causes |
+|------------|-------------|---------------|
+| `VALIDATION` | Input data validation failed | Invalid format, missing required fields, constraint violations |
+| `DATA_FORMAT` | JSON or data parsing failed | Malformed JSON, unrecognized fields, invalid data structure |
+| `DUPLICATE` | Entity already exists | Attempting to create department/user with existing external ID or email |
+| `NOT_FOUND` | Referenced entity not found | Parent department doesn't exist, user type not found |
+| `PERMISSION` | Access denied | Insufficient permissions to perform the operation |
+| `SYSTEM` | Internal system error | Database errors, network issues, unexpected exceptions |
+
+#### Troubleshooting Failed Operations
+
+Use the failure details to understand and resolve issues:
+
+1. **Validation Errors**: Check the `errorMessage` for specific validation requirements
+2. **Data Format Errors**: Verify JSON structure and field names match the expected schema
+3. **Duplicate Errors**: Verify external IDs and email addresses are unique
+4. **Not Found Errors**: Ensure parent departments and user types exist before referencing them
+5. **System Errors**: Contact support if these occur frequently
+
+**Example Error Analysis:**
+
+```json
+{
+  "operationId": "op-42",
+  "operationType": "DEPARTMENT",
+  "operationAction": "CREATE",
+  "externalId": "ext-dept-001",
+  "entityName": "Sales Department",
+  "errorMessage": "Department with external ID 'ext-dept-001' already exists",
+  "errorType": "VALIDATION",
+  "failedOn": "2024-01-15T10:42:30Z"
+}
+```
+
+**Resolution**: Use UPDATE action instead of CREATE, or use a different external ID.
+
+**DATA_FORMAT Error Example:**
+
+```json
+{
+  "operationId": "op-73",
+  "operationType": "USER",
+  "operationAction": "CREATE",
+  "externalId": null,
+  "entityName": null,
+  "errorMessage": "Invalid user data format: Unrecognized field 'emailAddress' (expected 'email')",
+  "errorType": "DATA_FORMAT",
+  "failedOn": "2024-01-15T10:44:12Z",
+  "details": {
+    "operationId": "73",
+    "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+    "exceptionType": "UnrecognizedPropertyException"
+  }
+}
+```
+
+**Resolution**: Check field names in your JSON payload match the expected schema exactly.
+
+### Background Job Tracking
+
+Track the detailed progress of background job processing using the Admin Jobs API.
+
+#### Endpoint
+
+```
+GET /user/job/{jobId}
+```
+
+#### Response Format
+
+```json
+{
+  "status": true,
+  "value": {
+    "id": "507f1f77bcf86cd799439011",
+    "version": "V1",
+    "tenantId": "tenant-123",
+    "status": "DONE",
+    "createdBy": "user-456",
+    "createdOn": "2024-01-15T10:35:00Z",
+    "startedOn": "2024-01-15T10:35:30Z",
+    "startOn": "2024-01-15T10:35:00Z",
+    "finishedOn": "2024-01-15T10:45:00Z",
+    "priority": 5,
+    "job": {
+      "type": "EXECUTE_IAM_COMMIT_TRANSACTION_JOB",
+      "userId": "user-456",
+      "tenantId": "tenant-123",
+      "transactionId": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "errorMessage": null,
+    "stackTrace": null,
+    "donePercentage": 100,
+    "updates": [
+      {
+        "timestamp": "2024-01-15T10:40:00Z",
+        "message": "Processing departments: 50/100 completed"
+      },
+      {
+        "timestamp": "2024-01-15T10:42:00Z",
+        "message": "Processing users: 25/50 completed"
+      }
+    ],
+    "results": {
+      "totalDepartments": 100,
+      "totalUsers": 50,
+      "successfulDepartments": 98,
+      "successfulUsers": 47,
+      "failedDepartments": 2,
+      "failedUsers": 3
+    }
+  }
+}
+```
+
+## BackendJob Document Structure
+
+The BackendJob document returned by the `/user/job/{jobId}` endpoint contains the following fields:
+
+### Core Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | String | Unique job identifier |
+| `version` | String | Job schema version (typically "V1") |
+| `tenantId` | String | Tenant identifier |
+| `status` | String | Current job status |
+| `createdBy` | String | User ID who created the job |
+| `createdOn` | DateTime | Job creation timestamp |
+| `startedOn` | DateTime | Job execution start timestamp |
+| `startOn` | DateTime | Scheduled execution time |
+| `finishedOn` | DateTime | Job completion timestamp |
+| `priority` | Integer | Job priority (higher numbers = higher priority) |
+
+### Job Status Values
+
+- `NOT_STARTED` - Job is queued but not started
+- `STARTED` - Job is currently running
+- `DONE` - Job completed successfully
+- `FAILED` - Job failed with errors
+- `CANCELLED` - Job was cancelled
+
+### Job-Specific Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `job` | Object | Job-specific configuration and parameters |
+| `job.type` | String | Job type (e.g., "EXECUTE_IAM_COMMIT_TRANSACTION_JOB") |
+| `job.userId` | String | User who initiated the job |
+| `job.tenantId` | String | Target tenant for the job |
+| `job.transactionId` | String | Associated transaction ID |
+
+### Progress and Error Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `errorMessage` | String | Error message if job failed |
+| `stackTrace` | String | Full stack trace for debugging |
+| `donePercentage` | Integer | Completion percentage (0-100) |
+| `updates` | Array | Progress updates during job execution |
+| `results` | Object | Job results and statistics |
+
+### Progress Updates Structure
+
+Each entry in the `updates` array contains:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `timestamp` | DateTime | When the update was recorded |
+| `message` | String | Human-readable progress message |
+
+### Results Object
+
+The `results` object varies by job type but typically includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalDepartments` | Integer | Total departments processed |
+| `totalUsers` | Integer | Total users processed |
+| `successfulDepartments` | Integer | Successfully processed departments |
+| `successfulUsers` | Integer | Successfully processed users |
+| `failedDepartments` | Integer | Failed department operations |
+| `failedUsers` | Integer | Failed user operations |
+
+## Integration Best Practices
+
+### Transaction-Based Synchronization
+
+1. **Create Checkpoint**: Always start with creating a transaction
+2. **Batch Operations**: Add multiple departments/users to the same transaction
+3. **Commit Once**: Commit the transaction when all operations are added
+4. **Monitor Progress**: Use both transaction status and job tracking
+5. **Handle Failures**: Implement retry logic for failed operations
+
+### Example Workflow
+
+```javascript
+// 1. Create checkpoint
+const checkpoint = await createCheckpoint();
+const transactionId = checkpoint.transactionId;
+
+// 2. Sync departments
+await syncDepartments(transactionId, departments);
+
+// 3. Sync users  
+await syncUsers(transactionId, users);
+
+// 4. Commit transaction
+const commit = await commitTransaction(transactionId);
+const jobId = commit.jobId;
+
+// 5. Monitor progress
+const monitorJob = async (jobId) => {
+  let status = 'NOT_STARTED';
+  while (status !== 'DONE' && status !== 'FAILED') {
+    const job = await getJob(jobId);
+    status = job.value.status;
+    
+    console.log(`Progress: ${job.value.donePercentage}%`);
+    console.log(`Status: ${status}`);
+    
+    if (job.value.updates && job.value.updates.length > 0) {
+      const latestUpdate = job.value.updates[job.value.updates.length - 1];
+      console.log(`Latest update: ${latestUpdate.message}`);
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+  }
+  
+  return status === 'DONE';
+};
+
+const success = await monitorJob(jobId);
+if (success) {
+  console.log('Synchronization completed successfully');
+} else {
+  console.error('Synchronization failed');
+}
+```
+
+### Error Handling
+
+The IAM Provisioning API provides comprehensive error tracking at multiple levels:
+
+#### 1. Transaction-Level Error Tracking
+
+Monitor overall transaction progress using the `getTransactionStatus` endpoint:
+
+```javascript
+const checkTransactionStatus = async (transactionId) => {
+  const response = await fetch(`/provisioning/iam/transaction/${transactionId}/status`);
+  const status = await response.json();
+  
+  console.log(`Transaction: ${status.transactionStatus}`);
+  console.log(`Progress: ${status.completedOperations}/${status.totalOperations}`);
+  console.log(`Failures: ${status.failedOperations}`);
+  
+  // Handle individual failures
+  if (status.failures && status.failures.length > 0) {
+    console.log('Failed operations:');
+    status.failures.forEach(failure => {
+      console.log(`- ${failure.operationType} ${failure.operationAction}: ${failure.errorMessage}`);
+      console.log(`  Entity: ${failure.entityName} (${failure.externalId})`);
+      console.log(`  Error Type: ${failure.errorType}`);
+      
+      // Take corrective action based on error type
+      switch (failure.errorType) {
+        case 'VALIDATION':
+          console.log('  Action: Fix data format or missing fields');
+          break;
+        case 'DUPLICATE':
+          console.log('  Action: Use UPDATE instead of CREATE or change external ID');
+          break;
+        case 'NOT_FOUND':
+          console.log('  Action: Ensure parent entities exist first');
+          break;
+      }
+    });
+  }
+  
+  return status;
+};
+```
+
+#### 2. Job-Level Progress Tracking
+
+Use the background job endpoint for detailed execution progress:
+
+```javascript
+const monitorJobProgress = async (jobId) => {
+  const response = await fetch(`/user/job/${jobId}`);
+  const job = await response.json();
+  
+  if (job.value.errorMessage) {
+    console.error(`Job failed: ${job.value.errorMessage}`);
+    return false;
+  }
+  
+  // Check for progress updates
+  if (job.value.updates && job.value.updates.length > 0) {
+    const latestUpdate = job.value.updates[job.value.updates.length - 1];
+    console.log(`Progress: ${latestUpdate.message}`);
+  }
+  
+  return job.value.status;
+};
+```
+
+#### 3. Retry Strategy for Failed Operations
+
+Implement intelligent retry logic based on failure types:
+
+```javascript
+const retryFailedOperations = async (transactionStatus) => {
+  if (!transactionStatus.failures) return;
+  
+  const retryableFailures = transactionStatus.failures.filter(failure => {
+    // Only retry certain error types
+    return ['SYSTEM', 'NOT_FOUND'].includes(failure.errorType);
+  });
+  
+  if (retryableFailures.length > 0) {
+    console.log(`Retrying ${retryableFailures.length} failed operations...`);
+    
+    // Create a new transaction for retries
+    const newCheckpoint = await createCheckpoint();
+    
+    // Re-submit the failed operations (you'd need to reconstruct the original data)
+    // This is implementation-specific based on how you store the original requests
+    
+    const retryCommit = await commitTransaction(newCheckpoint.transactionId);
+    return retryCommit.jobId;
+  }
+  
+  return null;
+};
+```
+
+#### 4. Best Practices
+
+- **Monitor both transaction status and job status** for complete visibility
+- **Parse failure details** to understand specific issues with each operation
+- **Implement categorized retry logic** based on error types:
+  - `VALIDATION` errors: Fix data and retry
+  - `DUPLICATE` errors: Use UPDATE operations or change identifiers
+  - `NOT_FOUND` errors: Create dependencies first, then retry
+  - `SYSTEM` errors: Retry with exponential backoff
+  - `PERMISSION` errors: Check authorization, don't retry
+- **Handle partial success scenarios** where some operations succeed and others fail
+- **Log detailed failure information** for debugging and auditing
+- **Implement exponential backoff** for polling operations to avoid overwhelming the system
