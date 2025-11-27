@@ -224,7 +224,7 @@ curl -s -w "HTTP Status: %{http_code}\n" \
   -H "auth-tenant-id: $QMPLUS_TENANT_ID" \
   -H "auth-token: $QMPLUS_API_TOKEN" \
   -H "Content-Type: application/json" \
-  "$QMPLUS_BASE_URL/provisioning/iam/transactions?pageSize=1"
+  "$QMPLUS_BASE_URL/provisioning/iam/transactions?limit=1"
 ```
 
 ### Node.js Validation
@@ -232,7 +232,7 @@ curl -s -w "HTTP Status: %{http_code}\n" \
 async function validateAuth() {
   try {
     const response = await fetch(
-      `${process.env.QMPLUS_BASE_URL}/provisioning/iam/transactions?pageSize=1`,
+      `${process.env.QMPLUS_BASE_URL}/provisioning/iam/transactions?limit=1`,
       {
         headers: {
           'auth-tenant-id': process.env.QMPLUS_TENANT_ID,

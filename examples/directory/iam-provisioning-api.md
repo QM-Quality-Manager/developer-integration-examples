@@ -75,7 +75,7 @@ GET /provisioning/iam/department?active=true&createdOn=LAST_30_DAYS&updatedOn=LA
 ```json
 {
   "status": true,
-  "departments": [
+  "entries": [
     {
       "id": "dept-123",
       "name": "Engineering Department",
@@ -96,10 +96,7 @@ GET /provisioning/iam/department?active=true&createdOn=LAST_30_DAYS&updatedOn=LA
       "updatedOn": "2024-01-25T16:20:00Z",
       "active": true
     }
-  ],
-  "totalCount": 25,
-  "skip": 0,
-  "limit": 50
+  ]
 }
 ```
 
@@ -108,10 +105,7 @@ GET /provisioning/iam/department?active=true&createdOn=LAST_30_DAYS&updatedOn=LA
 | Field | Type | Description |
 |-------|------|-------------|
 | `status` | Boolean | Indicates if the request was successful |
-| `departments` | Array | List of department objects |
-| `totalCount` | Integer | Total number of departments matching the filter criteria |
-| `skip` | Integer | Number of records skipped (pagination) |
-| `limit` | Integer | Maximum number of records returned |
+| `entries` | Array | List of department objects |
 
 #### Department Object Fields
 
@@ -239,7 +233,7 @@ POST /provisioning/iam/checkpoint
 {
   "status": true,
   "transactionId": "550e8400-e29b-41d4-a716-446655440000",
-  "message": "Transaction checkpoint created successfully"
+  "message": "Checkpoint created successfully"
 }
 ```
 
@@ -255,17 +249,17 @@ POST /provisioning/iam/checkpoint
 
 After creating a checkpoint, you can add operations to the transaction:
 
-- **Sync Departments**: `POST /provisioning/iam/department/sync/{transactionId}`
-- **Sync Users**: `POST /provisioning/iam/user/sync/{transactionId}`
+- **Sync Departments**: `POST /provisioning/iam/{transactionId}/department`
+- **Sync Users**: `POST /provisioning/iam/{transactionId}/user`
 
 ### Commit Transaction
 
-Executes all operations in the transaction as a background job.
+Schedules a background job to commit a transaction, processing all queued operations asynchronously. Operations are processed in order: departments first, then users.
 
 #### Endpoint
 
 ```
-POST /provisioning/iam/transaction/{transactionId}/commit
+POST /provisioning/iam/{transactionId}/commit
 ```
 
 #### Response Format
@@ -274,8 +268,8 @@ POST /provisioning/iam/transaction/{transactionId}/commit
 {
   "status": true,
   "transactionId": "550e8400-e29b-41d4-a716-446655440000",
-  "jobId": "507f1f77bcf86cd799439011",
-  "message": "Transaction committed successfully as background job"
+  "jobId": "670e8400-e29b-41d4-a716-446655440001",
+  "message": "Transaction commit has been scheduled for background processing. Use the jobId to check status."
 }
 ```
 
@@ -352,11 +346,10 @@ GET /provisioning/iam/transaction/{transactionId}/status
 #### Transaction Status Values
 
 - `OPEN` - Transaction is accepting operations
-- `COMMITTED` - Transaction has been committed for processing
+- `COMMITTED` - Transaction has been committed and scheduled for processing
 - `PROCESSING` - Background job is executing operations
-- `COMPLETED` - All operations have been processed
+- `COMPLETED` - All operations have been processed (check failedOperations for partial failures)
 - `FAILED` - Transaction processing failed
-- `ROLLED_BACK` - Transaction was rolled back
 
 #### Response Fields
 
@@ -448,6 +441,64 @@ Use the failure details to understand and resolve issues:
 ```
 
 **Resolution**: Check field names in your JSON payload match the expected schema exactly.
+
+### List Operations
+
+Retrieves a paginated list of operations for a specific transaction. Useful for debugging and auditing.
+
+#### Endpoint
+
+```
+GET /provisioning/iam/transaction/{transactionId}/operations
+```
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description | Example |
+|-----------|------|----------|-------------|---------|
+| `status` | String | No | Filter by operation status | `FAILED` |
+| `entityType` | String | No | Filter by entity type | `USER` |
+| `operationType` | String | No | Filter by operation type | `USER_CREATE` |
+| `sortField` | String | No | Field to sort by (default: orderId) | `createdOn` |
+| `sortDirection` | Integer | No | Sort direction (1=asc, -1=desc) | `1` |
+| `skip` | Integer | No | Records to skip (default: 0) | `0` |
+| `limit` | Integer | No | Max records to return (default: 50, max: 1000) | `100` |
+
+**Valid Status Values**: `PENDING`, `PROCESSING`, `COMPLETED`, `FAILED`
+
+**Valid Entity Types**: `USER`, `DEPARTMENT`
+
+**Valid Operation Types**: `USER_CREATE`, `USER_UPDATE`, `USER_DELETE`, `DEPT_CREATE`, `DEPT_UPDATE`, `DEPT_DELETE`
+
+#### Response Format
+
+```json
+{
+  "status": true,
+  "operations": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+      "orderId": 1,
+      "operationType": "USER_CREATE",
+      "entityType": "USER",
+      "status": "COMPLETED",
+      "error": null,
+      "createdBy": "admin",
+      "createdOn": "2024-01-15T10:30:00",
+      "processedOn": "2024-01-15T10:35:00",
+      "data": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@example.com"
+      }
+    }
+  ],
+  "totalCount": 25,
+  "skip": 0,
+  "limit": 50
+}
+```
 
 ### Background Job Tracking
 

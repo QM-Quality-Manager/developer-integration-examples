@@ -283,15 +283,15 @@ function validateAuthConfig(config) {
 function validatePagination(params) {
   const errors = [];
   
-  if (params.page !== undefined) {
-    if (!Number.isInteger(params.page) || params.page < 0) {
-      errors.push('page must be a non-negative integer');
+  if (params.skip !== undefined) {
+    if (!Number.isInteger(params.skip) || params.skip < 0) {
+      errors.push('skip must be a non-negative integer');
     }
   }
-  
-  if (params.pageSize !== undefined) {
-    if (!Number.isInteger(params.pageSize) || params.pageSize < 1 || params.pageSize > 1000) {
-      errors.push('pageSize must be an integer between 1 and 1000');
+
+  if (params.limit !== undefined) {
+    if (!Number.isInteger(params.limit) || params.limit < 1 || params.limit > 1000) {
+      errors.push('limit must be an integer between 1 and 1000');
     }
   }
   

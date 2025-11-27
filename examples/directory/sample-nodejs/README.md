@@ -148,10 +148,11 @@ console.log(`Total users: ${users.total}, Returned: ${users.entries.length}`);
 
 ### Transaction Management
 - `client.createCheckpoint()` - Create new transaction
-- `client.commitTransaction(transactionId)` - Execute operations
+- `client.commitTransaction(transactionId)` - Schedule background job for processing
 - `client.getTransactionStatus(transactionId)` - Check status with failure details
 - `client.getJob(jobId)` - Get background job progress and details
 - `client.listTransactions(filters)` - Get transaction history with skip/limit pagination
+- `client.getOperations(transactionId, filters)` - List operations for a transaction with filtering
 
 ### Data Synchronization
 - `client.syncUsers(users, transactionId?)` - Sync users
@@ -235,6 +236,27 @@ if (jobDetails.value.updates) {
     console.log(`${update.timestamp}: ${update.message}`);
   });
 }
+```
+
+### List Operations for Debugging
+```javascript
+// Get all failed operations for a transaction
+const failedOps = await client.getOperations(transactionId, {
+  status: 'FAILED',
+  skip: 0,
+  limit: 100
+});
+
+console.log(`Found ${failedOps.totalCount} failed operations`);
+failedOps.operations.forEach(op => {
+  console.log(`Operation ${op.orderId}: ${op.operationType} - ${op.error}`);
+});
+
+// Filter by entity type
+const userOps = await client.getOperations(transactionId, {
+  entityType: 'USER',
+  status: 'COMPLETED'
+});
 ```
 
 ### Error Types & Retry Strategies

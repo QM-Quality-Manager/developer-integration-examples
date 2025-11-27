@@ -223,7 +223,7 @@ async function monitoringExample() {
     // Get transaction history
     console.log('1️⃣  Getting transaction history...');
     const history = await client.listTransactions({
-      pageSize: 10
+      limit: 10
     });
     
     console.log(`📈 Found ${history.totalCount} total transactions`);
@@ -251,13 +251,13 @@ async function monitoringExample() {
     
     const completedTx = await client.listTransactions({
       status: 'COMPLETED',
-      pageSize: 5
+      limit: 5
     });
     console.log(`   • Completed transactions: ${completedTx.totalCount}`);
-    
+
     const failedTx = await client.listTransactions({
       status: 'FAILED',
-      pageSize: 5
+      limit: 5
     });
     console.log(`   • Failed transactions: ${failedTx.totalCount}`);
     

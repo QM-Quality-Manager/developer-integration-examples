@@ -39,8 +39,8 @@ POST /provisioning/iam/checkpoint
 }
 ```
 
-### Commit Transaction
-Executes all queued operations atomically.
+### Commit Transaction (Background)
+Schedules a background job to commit a transaction, processing all queued operations asynchronously. Operations are processed in order: departments first, then users.
 
 ```http
 POST /provisioning/iam/{transactionId}/commit
@@ -51,27 +51,13 @@ POST /provisioning/iam/{transactionId}/commit
 {
   "status": true,
   "transactionId": "550e8400-e29b-41d4-a716-446655440000",
-  "totalOperations": 25,
-  "successfulOperations": 23,
-  "failedOperations": 2,
-  "errors": [
-    {
-      "code": "VALIDATION",
-      "paths": ["operation.15"],
-      "messages": [
-        {
-          "locale": "US",
-          "message": "Department not found: dept-xyz",
-          "key": "identum.commit.department.error"
-        }
-      ]
-    }
-  ]
+  "jobId": "670e8400-e29b-41d4-a716-446655440001",
+  "message": "Transaction commit has been scheduled for background processing. Use the jobId to check status."
 }
 ```
 
 ### Get Transaction Status
-Retrieves current status of a transaction.
+Retrieves current status of a transaction including operation counts, timestamps, and detailed failure information.
 
 ```http
 GET /provisioning/iam/transaction/{transactionId}/status
@@ -88,9 +74,51 @@ GET /provisioning/iam/transaction/{transactionId}/status
   "failedOperations": 2,
   "createdOn": "2024-01-15T10:30:00",
   "committedOn": "2024-01-15T10:31:00",
-  "completedOn": "2024-01-15T10:31:30"
+  "completedOn": "2024-01-15T10:31:30",
+  "failures": [
+    {
+      "operationId": "op-15",
+      "operationType": "DEPARTMENT",
+      "operationAction": "CREATE",
+      "externalId": "dept-xyz",
+      "entityName": "Unknown Department",
+      "errorMessage": "Parent department not found: dept-parent-xyz",
+      "errorType": "VALIDATION",
+      "failedOn": "2024-01-15T10:31:15",
+      "details": {
+        "parentExternalId": "dept-parent-xyz"
+      }
+    }
+  ]
 }
 ```
+
+**Response Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | Boolean | Request success indicator |
+| `transactionId` | String | Transaction identifier |
+| `transactionStatus` | String | Current status (OPEN, COMMITTED, PROCESSING, COMPLETED, FAILED) |
+| `totalOperations` | Integer | Total operations in transaction |
+| `completedOperations` | Integer | Successfully completed operations |
+| `failedOperations` | Integer | Failed operations count |
+| `createdOn` | String | Transaction creation timestamp |
+| `committedOn` | String | When transaction was committed |
+| `completedOn` | String | When processing completed |
+| `failures` | Array | Detailed failure information (null if no failures) |
+
+**Failure Object Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `operationId` | String | Unique operation identifier |
+| `operationType` | String | Entity type (DEPARTMENT, USER) |
+| `operationAction` | String | Action (CREATE, UPDATE, DELETE) |
+| `externalId` | String | External ID of the entity |
+| `entityName` | String | Name of the entity |
+| `errorMessage` | String | Detailed error message |
+| `errorType` | String | Error category (VALIDATION, DUPLICATE, NOT_FOUND, PERMISSION, SYSTEM, DATA_FORMAT) |
+| `failedOn` | String | When the operation failed |
+| `details` | Object | Additional context-specific information |
 
 ### List Transactions
 Retrieves transaction history with filtering and pagination.
@@ -137,6 +165,80 @@ GET /provisioning/iam/transactions?status=COMPLETED&skip=0&limit=20
   "limit": 20
 }
 ```
+
+### List Operations
+Retrieves a paginated list of operations for a specific transaction. Supports filtering by status, entity type, and operation type.
+
+```http
+GET /provisioning/iam/transaction/{transactionId}/operations
+```
+
+**Query Parameters:**
+- `status` (optional): Filter by operation status (PENDING, PROCESSING, COMPLETED, FAILED)
+- `entityType` (optional): Filter by entity type (USER, DEPARTMENT)
+- `operationType` (optional): Filter by operation type (USER_CREATE, USER_UPDATE, USER_DELETE, DEPT_CREATE, DEPT_UPDATE, DEPT_DELETE)
+- `sortField` (optional, default: orderId): Field to sort by
+- `sortDirection` (optional, default: 1): Sort direction (1 for ascending, -1 for descending)
+- `skip` (optional, default: 0): Number of records to skip for pagination
+- `limit` (optional, default: 50, max: 1000): Maximum number of records to return
+
+**Example:**
+```http
+GET /provisioning/iam/transaction/550e8400-e29b-41d4-a716-446655440000/operations?status=FAILED&entityType=USER&skip=0&limit=20
+```
+
+**Response:**
+```json
+{
+  "status": true,
+  "operations": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+      "orderId": 1,
+      "operationType": "USER_CREATE",
+      "entityType": "USER",
+      "status": "COMPLETED",
+      "error": null,
+      "createdBy": "admin",
+      "createdOn": "2024-01-15T10:30:00",
+      "processedOn": "2024-01-15T10:35:00",
+      "data": {
+        "firstName": "John",
+        "lastName": "Doe",
+        "email": "john.doe@example.com"
+      }
+    }
+  ],
+  "totalCount": 25,
+  "skip": 0,
+  "limit": 50
+}
+```
+
+**Response Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `status` | Boolean | Request success indicator |
+| `operations` | Array | List of operation log entries |
+| `totalCount` | Integer | Total operations matching filter criteria |
+| `skip` | Integer | Number of records skipped |
+| `limit` | Integer | Maximum records returned |
+
+**Operation Object Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | String | Unique operation identifier |
+| `transactionId` | String | Parent transaction ID |
+| `orderId` | Integer | Execution order within transaction |
+| `operationType` | String | Operation type (USER_CREATE, USER_UPDATE, DEPT_CREATE, etc.) |
+| `entityType` | String | Entity type (USER, DEPARTMENT) |
+| `status` | String | Operation status (PENDING, PROCESSING, COMPLETED, FAILED) |
+| `error` | String | Error message if operation failed |
+| `createdBy` | String | User who created the operation |
+| `createdOn` | String | Operation creation timestamp |
+| `processedOn` | String | When the operation was processed |
+| `data` | Object | The original operation data |
 
 ---
 
@@ -250,7 +352,7 @@ GET /provisioning/iam/department?active=true&createdOn=LAST_30_DAYS&updatedOn=LA
 ```json
 {
   "status": true,
-  "departments": [
+  "entries": [
     {
       "id": "507f1f77bcf86cd799439011",
       "name": "Engineering Department",
@@ -261,19 +363,13 @@ GET /provisioning/iam/department?active=true&createdOn=LAST_30_DAYS&updatedOn=LA
       "updatedOn": "2024-02-01T14:45:00Z",
       "active": true
     }
-  ],
-  "totalCount": 25,
-  "skip": 0,
-  "limit": 50
+  ]
 }
 ```
 
 **Response Fields:**
 - `status`: Boolean indicating request success
-- `departments`: Array of department objects
-- `totalCount`: Total number of departments matching filter criteria
-- `skip`: Number of records skipped (pagination)
-- `limit`: Maximum number of records returned
+- `entries`: Array of department objects
 
 **Department Object Fields:**
 - `id`: Internal department ID
@@ -304,16 +400,21 @@ POST /provisioning/iam/{transactionId}/user
     "middleName": "Michael",
     "lastName": "Smith",
     "email": "john.smith@company.com",
+    "username": "jsmith",
     "phoneNumber": "+1-555-123-4567",
     "externalId": "user-12345",
     "active": true,
+    "matchOnField": "EXTERNAL_ID",
+    "overrideDuplicateUserTypes": false,
     "userTypes": [
       {
         "departmentExternalId": "dept-engineering",
-        "userTypeId": "1"
+        "departmentName": "Engineering",
+        "userTypeId": "1",
+        "userTypeName": "Developer"
       },
       {
-        "departmentExternalId": "dept-frontend", 
+        "departmentExternalId": "dept-frontend",
         "userTypeId": "2"
       }
     ]
@@ -323,13 +424,18 @@ POST /provisioning/iam/{transactionId}/user
 
 **Field Descriptions:**
 - `firstName`, `middleName`, `lastName`: User name components
-- `email`: User's email address (used as username)
+- `email`: User's email address
+- `username`: Username for login (optional)
 - `phoneNumber`: Contact number
 - `externalId`: Unique identifier from external system
 - `active`: Whether user is active
+- `matchOnField` (or `mergeAttribute`): Determines how to match existing users for updates. Values: `EXTERNAL_ID`, `EMAIL`, `USERNAME`
+- `overrideDuplicateUserTypes`: If true, local userTypeId/departmentId combinations will be replaced (optional)
 - `userTypes`: Array of department/role assignments
   - `departmentExternalId`: External ID of department
+  - `departmentName`: Department name (alternative to departmentExternalId)
   - `userTypeId`: Internal ID of user type/role
+  - `userTypeName`: User type name (alternative to userTypeId)
 
 **Response:**
 ```json
@@ -368,9 +474,10 @@ GET /provisioning/iam/user?active=true&skip=0&limit=50
     {
       "id": "507f1f77bcf86cd799439014",
       "firstName": "John",
-      "middleName": "Michael", 
+      "middleName": "Michael",
       "lastName": "Smith",
       "email": "john.smith@company.com",
+      "username": "jsmith",
       "phoneNumber": "+1-555-123-4567",
       "directoryUniqueIdentifier": "user-12345",
       "userTypes": [
@@ -383,7 +490,7 @@ GET /provisioning/iam/user?active=true&skip=0&limit=50
         {
           "departmentId": "507f1f77bcf86cd799439013",
           "departmentName": "Frontend Team",
-          "userTypeId": "2", 
+          "userTypeId": "2",
           "userTypeName": "Senior Developer"
         }
       ]
@@ -750,37 +857,59 @@ HTTP 403 Forbidden
 
 ### Commit Transaction Errors
 
-During transaction commit, multiple operations may fail. The response includes details for each failure:
+Transaction commit schedules a background job. Initial commit errors (before job starts) are returned immediately:
+
+```json
+{
+  "code": "VALIDATION",
+  "message": "Transaction not found",
+  "errors": [{
+    "type": "VALIDATION",
+    "fields": ["transactionId"],
+    "messages": [{
+      "locale": "en-US",
+      "message": "Transaction with ID 550e8400-e29b-41d4-a716-446655440000 not found"
+    }],
+    "key": "iam.transaction.not_found"
+  }],
+  "key": "iam.transaction.not_found"
+}
+```
+
+**Processing Errors**: After the job starts, failures are tracked in the transaction status. Use `GET /provisioning/iam/transaction/{transactionId}/status` to retrieve detailed failure information:
 
 ```json
 {
   "status": true,
   "transactionId": "550e8400-e29b-41d4-a716-446655440000",
+  "transactionStatus": "COMPLETED",
   "totalOperations": 25,
-  "successfulOperations": 23,
+  "completedOperations": 23,
   "failedOperations": 2,
-  "errors": [
+  "failures": [
     {
-      "code": "VALIDATION",
-      "paths": ["operation.15"],
-      "messages": [
-        {
-          "locale": "US",
-          "message": "Department not found: dept-xyz",
-          "key": "iam.provisioning.department.notFound"
-        }
-      ]
+      "operationId": "op-15",
+      "operationType": "DEPARTMENT",
+      "operationAction": "CREATE",
+      "externalId": "dept-xyz",
+      "entityName": "Unknown Department",
+      "errorMessage": "Department not found: dept-xyz",
+      "errorType": "VALIDATION",
+      "failedOn": "2024-01-15T10:42:30Z",
+      "details": {}
     },
     {
-      "code": "VALIDATION", 
-      "paths": ["operation.18"],
-      "messages": [
-        {
-          "locale": "US",
-          "message": "User type not found",
-          "key": "iam.provisioning.userType.notFound"
-        }
-      ]
+      "operationId": "op-18",
+      "operationType": "USER",
+      "operationAction": "CREATE",
+      "externalId": "user-123",
+      "entityName": "John Doe",
+      "errorMessage": "User type not found",
+      "errorType": "NOT_FOUND",
+      "failedOn": "2024-01-15T10:42:35Z",
+      "details": {
+        "userTypeId": "999"
+      }
     }
   ]
 }
@@ -800,6 +929,12 @@ During transaction commit, multiple operations may fail. The response includes d
 | `iam.department.invalid_date_format` | Invalid date range JSON format | 400 | Malformed PipelineDateRange JSON |
 | `iam.provisioning.department.notFound` | Department not found | 400 | Invalid department external ID |
 | `iam.provisioning.userType.notFound` | User type not found | 400 | Invalid user type ID |
+| `iam.operation.invalid_status` | Invalid operation status filter | 400 | Invalid status value (valid: PENDING, PROCESSING, COMPLETED, FAILED) |
+| `iam.operation.invalid_entity_type` | Invalid entity type filter | 400 | Invalid entityType value (valid: USER, DEPARTMENT) |
+| `iam.operation.invalid_operation_type` | Invalid operation type filter | 400 | Invalid operationType value |
+| `iam.operation.invalid_sort_direction` | Invalid sort direction | 400 | Sort direction must be 1 (ascending) or -1 (descending) |
+| `iam.operation.invalid_limit` | Invalid operations limit | 400 | Limit must be greater than 0 |
+| `iam.operation.invalid_skip` | Invalid operations skip | 400 | Skip must be >= 0 |
 
 ---
 
@@ -858,14 +993,38 @@ await fetch(`/api/provisioning/iam/${transactionId}/user`, {
   ])
 });
 
-// 4. Commit all operations atomically
+// 4. Commit (schedules background job)
 const result = await fetch(`/api/provisioning/iam/${transactionId}/commit`, {
   method: 'POST',
   headers: authHeaders
 });
 const commitResult = await result.json();
+console.log(`Background job scheduled: ${commitResult.jobId}`);
 
-console.log(`Success: ${commitResult.successfulOperations}/${commitResult.totalOperations}`);
+// 5. Monitor transaction status
+const pollStatus = async () => {
+  const statusResponse = await fetch(
+    `/api/provisioning/iam/transaction/${transactionId}/status`,
+    { headers: authHeaders }
+  );
+  const status = await statusResponse.json();
+
+  if (status.transactionStatus === 'COMPLETED') {
+    console.log(`Success: ${status.completedOperations}/${status.totalOperations}`);
+    if (status.failures?.length > 0) {
+      console.log('Failures:', status.failures);
+    }
+    return status;
+  } else if (status.transactionStatus === 'FAILED') {
+    throw new Error('Transaction failed');
+  }
+
+  // Continue polling
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return pollStatus();
+};
+
+await pollStatus();
 ```
 
 ### Multi-Department User Example

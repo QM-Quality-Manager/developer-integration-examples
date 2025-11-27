@@ -84,7 +84,7 @@ const isValid = await client.validateAuth();
    ```javascript
    // Test read permissions
    try {
-     await client.listTransactions({ pageSize: 1 });
+     await client.listTransactions({ limit: 1 });
      console.log('✅ PROVISIONING_SEARCH confirmed');
    } catch (error) {
      console.log('❌ Missing PROVISIONING_SEARCH');

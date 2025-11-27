@@ -32,11 +32,12 @@ async function createUser() {
     headers: defaultHeaders,
     body: JSON.stringify([{
       firstName: "Jane",
-      lastName: "Smith", 
+      lastName: "Smith",
       email: "jane.smith@company.com",
       phoneNumber: "+1-555-123-4567",
       externalId: "emp-12345",
       active: true,
+      matchOnField: "EXTERNAL_ID",
       userTypes: [{
         departmentExternalId: "dept-engineering",
         userTypeId: "1"
@@ -44,13 +45,25 @@ async function createUser() {
     }])
   });
 
-  // 3. Commit transaction
-  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
+  // 3. Commit transaction (starts background job)
+  const commitResponse = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
-  
-  return await result.json();
+  const { jobId } = await commitResponse.json();
+
+  // 4. Poll for completion
+  let status;
+  do {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const statusResponse = await fetch(
+      `${baseUrl}/provisioning/iam/transaction/${transactionId}/status`,
+      { headers: defaultHeaders }
+    );
+    status = await statusResponse.json();
+  } while (status.transactionStatus === 'PROCESSING' || status.transactionStatus === 'COMMITTED');
+
+  return status;
 }
 ```
 
@@ -60,7 +73,7 @@ Import multiple users efficiently:
 ```javascript
 async function bulkUserImport(users) {
   const checkpoint = await fetch(`${baseUrl}/provisioning/iam/checkpoint`, {
-    method: 'POST', 
+    method: 'POST',
     headers: defaultHeaders
   });
   const { transactionId } = await checkpoint.json();
@@ -69,23 +82,37 @@ async function bulkUserImport(users) {
   const batchSize = 100;
   for (let i = 0; i < users.length; i += batchSize) {
     const batch = users.slice(i, i + batchSize);
-    
+
     await fetch(`${baseUrl}/provisioning/iam/${transactionId}/user`, {
       method: 'POST',
       headers: defaultHeaders,
       body: JSON.stringify(batch)
     });
-    
-    console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(users.length/batchSize)}`);
+
+    console.log(`Queued batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(users.length/batchSize)}`);
   }
 
-  // Commit all operations
-  const result = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
+  // Commit all operations (starts background job)
+  const commitResponse = await fetch(`${baseUrl}/provisioning/iam/${transactionId}/commit`, {
     method: 'POST',
     headers: defaultHeaders
   });
+  const { jobId } = await commitResponse.json();
+  console.log(`Background job started: ${jobId}`);
 
-  return await result.json();
+  // Poll for completion
+  let status;
+  do {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const statusResponse = await fetch(
+      `${baseUrl}/provisioning/iam/transaction/${transactionId}/status`,
+      { headers: defaultHeaders }
+    );
+    status = await statusResponse.json();
+    console.log(`Progress: ${status.completedOperations}/${status.totalOperations}`);
+  } while (status.transactionStatus === 'PROCESSING' || status.transactionStatus === 'COMMITTED');
+
+  return status;
 }
 
 // Example usage
@@ -368,21 +395,49 @@ class DirectorySync {
     try {
       // 1. Sync all departments first (dependency order)
       await this.syncDepartments(transactionId, directoryData.departments);
-      
+
       // 2. Sync all users
       await this.syncUsers(transactionId, directoryData.users);
-      
-      // 3. Commit everything
-      const result = await this.commitTransaction(transactionId);
-      
-      console.log(`Sync completed: ${result.successfulOperations}/${result.totalOperations} successful`);
-      return result;
-      
+
+      // 3. Commit everything (starts background job)
+      const commitResult = await this.commitTransaction(transactionId);
+      console.log(`Background job started: ${commitResult.jobId}`);
+
+      // 4. Wait for completion
+      const status = await this.waitForCompletion(transactionId);
+
+      console.log(`Sync completed: ${status.completedOperations}/${status.totalOperations} successful`);
+      if (status.failedOperations > 0) {
+        console.log(`Failed operations: ${status.failedOperations}`);
+        console.log('Failures:', status.failures);
+      }
+      return status;
+
     } catch (error) {
       console.error('Sync failed:', error);
       // Transaction will be abandoned (no rollback needed)
       throw error;
     }
+  }
+
+  async waitForCompletion(transactionId) {
+    while (true) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const status = await this.getTransactionStatus(transactionId);
+      console.log(`Progress: ${status.completedOperations}/${status.totalOperations}`);
+
+      if (status.transactionStatus === 'COMPLETED' || status.transactionStatus === 'FAILED') {
+        return status;
+      }
+    }
+  }
+
+  async getTransactionStatus(transactionId) {
+    const response = await fetch(
+      `${this.baseUrl}/provisioning/iam/transaction/${transactionId}/status`,
+      { headers: this.headers }
+    );
+    return await response.json();
   }
 
   async syncDepartments(transactionId, departments) {
@@ -395,7 +450,7 @@ class DirectorySync {
     for (let i = 0; i < sortedDepts.length; i += batchSize) {
       const batch = sortedDepts.slice(i, i + batchSize);
       
-      await fetch(`${this.baseUrl}/provisioning/iam/department?transactionId=${transactionId}`, {
+      await fetch(`${this.baseUrl}/provisioning/iam/${transactionId}/department`, {
         method: 'POST',
         headers: this.headers,
         body: JSON.stringify(batch)
@@ -511,15 +566,23 @@ async function robustSync(data) {
     // Queue operations
     await queueOperations(transactionId, data);
 
-    // Commit with retry logic
-    const result = await commitWithRetry(transactionId);
-    
-    if (result.failedOperations > 0) {
-      console.warn(`Partial success: ${result.failedOperations} operations failed`);
-      console.log('Failed operations:', result.errors);
+    // Commit (starts background job)
+    const commitResult = await commitWithRetry(transactionId);
+    console.log(`Background job: ${commitResult.jobId}`);
+
+    // Wait for completion and get final status
+    const status = await waitForCompletion(transactionId);
+
+    if (status.failedOperations > 0) {
+      console.warn(`Partial success: ${status.failedOperations} operations failed`);
+      status.failures?.forEach(failure => {
+        console.log(`- ${failure.operationType} ${failure.operationAction}: ${failure.errorMessage}`);
+        console.log(`  Entity: ${failure.entityName} (${failure.externalId})`);
+        console.log(`  Error type: ${failure.errorType}`);
+      });
     }
-    
-    return result;
+
+    return status;
     
   } catch (error) {
     console.error('Sync failed:', error);
@@ -577,6 +640,18 @@ async function getTransactionStatus(transactionId) {
     headers: defaultHeaders
   });
   return await response.json();
+}
+
+async function waitForCompletion(transactionId) {
+  while (true) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const status = await getTransactionStatus(transactionId);
+
+    if (status.transactionStatus === 'COMPLETED' || status.transactionStatus === 'FAILED') {
+      return status;
+    }
+    console.log(`Progress: ${status.completedOperations}/${status.totalOperations}`);
+  }
 }
 ```
 
@@ -715,19 +790,19 @@ Query historical transactions:
 ```javascript
 async function getAuditTrail(options = {}) {
   const params = new URLSearchParams({
-    page: options.page || 0,
-    pageSize: options.pageSize || 50
+    skip: options.skip || 0,
+    limit: options.limit || 50
   });
-  
+
   if (options.status) params.append('status', options.status);
   if (options.createdBy) params.append('createdBy', options.createdBy);
   if (options.createdAfter) params.append('createdAfter', options.createdAfter);
   if (options.createdBefore) params.append('createdBefore', options.createdBefore);
-  
+
   const response = await fetch(`${baseUrl}/provisioning/iam/transactions?${params}`, {
     headers: defaultHeaders
   });
-  
+
   return await response.json();
 }
 
@@ -735,7 +810,7 @@ async function getAuditTrail(options = {}) {
 const auditTrail = await getAuditTrail({
   status: 'COMPLETED',
   createdAfter: '2024-01-01T00:00:00',
-  pageSize: 100
+  limit: 100
 });
 
 const failedTransactions = await getAuditTrail({
